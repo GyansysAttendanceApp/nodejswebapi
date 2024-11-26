@@ -43,6 +43,23 @@ app.post("/api/integration-daily-swipe-data", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+app.post("/api/integration-employee-data", async (req, res) => {
+  const employeejson = req.body;
+  const jsonString = JSON.stringify(employeejson);
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool
+      .request()
+      .input("param_employeejson", sql.NVarChar(sql.MAX), jsonString)
+      .execute("sp_IntegrateEmplyeeData");    
+
+    res.json(result.recordset);
+  } catch (error) {
+    console.error("Error uploading integration data to sp_IntegrateEmplyeeData: ", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 //Integration End
 
 // below is for suggestion api (using Stored Procedure)
