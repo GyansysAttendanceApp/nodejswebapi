@@ -25,7 +25,27 @@ app.use(cors());
 
 
 // app.use(express.static(path.join(__dirname, 'ReactUIApp/build')));
-
+//Integration Start
+// below is for suggestion api (using Stored Procedure)
+app.post("/api/integration-daily-swipe-data", async (req, res) => {
+  //const swipejson = req.query.swipejson;
+  const swipejson = req.body;
+  const jsonString = JSON.stringify(swipejson);
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool
+      .request()
+      .input("param_swipejson", sql.NVarChar(sql.MAX), jsonString)
+      .execute("sp_IntegrateDailySwipeData");
+      //input("json", sql.NVarChar(sql.MAX), jsonString)
+ 
+    res.json(result.recordset);
+  } catch (error) {
+    console.error("Error uploading integration data to sp_IntegrateDailySwipeData: ", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+ 
 // below is for suggestion api (using Stored Procedure)
 app.get("/api/employees", async (req, res) => {
   const name = req.query.name;
