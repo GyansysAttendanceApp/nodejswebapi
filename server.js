@@ -178,6 +178,30 @@ app.get("/api/attendance/:empId/:year/:month", async (req, res) => {
   }
 });
 
+// API for Daily deptwise  Attendance History of Employeee (based on EmpID, Year, Month)
+app.get("/api/get-employee-attendance/:operationId/:date/:deptId/", async (req, res) => {
+  const operationId = req.params.operationId;
+  const date = req.params.date;
+  const deptId = req.params.deptId;
+// res.json({messgae:'get_Employee_attendance calling:::'})
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool
+      .request()
+      .input("param_OperationId", sql.NVarChar(2), operationId)
+      .input("param_Date", sql.NVarChar(10), date)
+      .input("param_DeptId", sql.NVarChar(10), deptId)
+      .execute("[dbo].[sp_GetEmployeeAttendance]");
+
+    res.json(result.recordset);
+  } catch (error) {
+    console.error(
+      "Error fetching employee attendance [dbo].[sp_GetEmployeeAttendance]: ",
+      error
+    );
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 //  API for fetching user roles based on EmployeeEmail
 app.get("/api/userroles", async (req, res) => {
   const EmployeeEmail = req.query.email;
