@@ -27,6 +27,23 @@ app.use(cors());
 // app.use(express.static(path.join(__dirname, 'ReactUIApp/build')));
 //Integration Start
 // below is for suggestion api (using Stored Procedure)
+
+app.post("/api/get-last-sync-date", async (req, res) => {
+  // const swipejson = req.body;
+  // const jsonString = JSON.stringify(swipejson);
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool
+      .request()      
+      .execute("sp_GetLastSyncDateWithNetxs");
+      console.log("ress",result.recordset.LastCloudSyncDate);
+      res.json(result.recordset[0].LastCloudSyncDate);
+  } catch (error) {
+    console.error("Error getting integration last sync date to sp_GetLastSyncDateWithNetxs: ", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 app.post("/api/integration-daily-swipe-data", async (req, res) => {
   //const swipejson = req.query.swipejson;
   const swipejson = req.body;
@@ -45,7 +62,25 @@ app.post("/api/integration-daily-swipe-data", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
- 
+
+app.post("/api/integration-employee-data", async (req, res) => {
+  const employeejson = req.body;
+  const jsonString = JSON.stringify(employeejson);
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool
+      .request()
+      .input("param_employeejson", sql.NVarChar(sql.MAX), jsonString)
+      .execute("sp_IntegrateEmployeeData");    
+
+    res.json(result.recordset);
+  } catch (error) {
+    console.error("Error uploading integration data to sp_IntegrateEmplyeeData: ", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+//Integration End
+
 // below is for suggestion api (using Stored Procedure)
 app.get("/api/employees", async (req, res) => {
   const name = req.query.name;
