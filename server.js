@@ -4,7 +4,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const os = require("os");
-const path = require('path');
+const path = require("path");
 
 const {
   //  configNetXs,
@@ -17,12 +17,8 @@ const {
 const app = express();
 const PORT = process.env.PORT;
 const BASE_URL = "/attendance";
-`${BASE_URL}/api/employees`,
-
-
-app.use(bodyParser.json()); //comment
+`${BASE_URL}/api/employees`, app.use(bodyParser.json()); //comment
 app.use(cors());
-
 
 // app.use(express.static(path.join(__dirname, 'ReactUIApp/build')));
 //Integration Start
@@ -33,13 +29,14 @@ app.post("/api/get-last-sync-date", async (req, res) => {
   // const jsonString = JSON.stringify(swipejson);
   try {
     const pool = await poolPromiseATDB;
-    const result = await pool
-      .request()      
-      .execute("sp_GetLastSyncDateWithNetxs");
-      console.log("ress",result.recordset.LastCloudSyncDate);
-      res.json(result.recordset[0].LastCloudSyncDate);
+    const result = await pool.request().execute("sp_GetLastSyncDateWithNetxs");
+    console.log("ress", result.recordset.LastCloudSyncDate);
+    res.json(result.recordset[0].LastCloudSyncDate);
   } catch (error) {
-    console.error("Error getting integration last sync date to sp_GetLastSyncDateWithNetxs: ", error);
+    console.error(
+      "Error getting integration last sync date to sp_GetLastSyncDateWithNetxs: ",
+      error
+    );
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
@@ -54,11 +51,14 @@ app.post("/api/integration-daily-swipe-data", async (req, res) => {
       .request()
       .input("param_swipejson", sql.NVarChar(sql.MAX), jsonString)
       .execute("sp_IntegrateDailySwipeData");
-      //input("json", sql.NVarChar(sql.MAX), jsonString)
- 
+    //input("json", sql.NVarChar(sql.MAX), jsonString)
+
     res.json(result.recordset);
   } catch (error) {
-    console.error("Error uploading integration data to sp_IntegrateDailySwipeData: ", error);
+    console.error(
+      "Error uploading integration data to sp_IntegrateDailySwipeData: ",
+      error
+    );
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
@@ -71,11 +71,14 @@ app.post("/api/integration-employee-data", async (req, res) => {
     const result = await pool
       .request()
       .input("param_employeejson", sql.NVarChar(sql.MAX), jsonString)
-      .execute("sp_IntegrateEmployeeData");    
+      .execute("sp_IntegrateEmployeeData");
 
     res.json(result.recordset);
   } catch (error) {
-    console.error("Error uploading integration data to sp_IntegrateEmplyeeData: ", error);
+    console.error(
+      "Error uploading integration data to sp_IntegrateEmplyeeData: ",
+      error
+    );
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
@@ -123,28 +126,28 @@ app.get("/api/attendance/:empId/:date", async (req, res) => {
 });
 
 // below is sp query this is for table
-app.get("/api/dept", async(req, res)=>{
-  const date= req.query.date;
+app.get("/api/dept", async (req, res) => {
+  const date = req.query.date;
 
   sql
-  .connect(configATDB)
-  .then(() => {
-    const request = new sql.Request();
+    .connect(configATDB)
+    .then(() => {
+      const request = new sql.Request();
 
-    request.input("param_Date", sql.VarChar, date);
+      request.input("param_Date", sql.VarChar, date);
 
-    request
-      .execute("sp_GetDeptwiseAttendance")
-      .then((result) => {
-        return res.json(result.recordset);
-      })
-      .catch((err) => {
-        console.error(`Error executing sp_GetDeptwiseAttendance: ${err}`);
-      });
-  })
-  .catch((err) => {
-    console.error(err);
-  });
+      request
+        .execute("sp_GetDeptwiseAttendance")
+        .then((result) => {
+          return res.json(result.recordset);
+        })
+        .catch((err) => {
+          console.error(`Error executing sp_GetDeptwiseAttendance: ${err}`);
+        });
+    })
+    .catch((err) => {
+      console.error(err);
+    });
   // return [];
 });
 
@@ -174,21 +177,46 @@ app.get("/api/attendance/:empId/:year/:month", async (req, res) => {
 });
 
 // API for Daily deptwise  Attendance History of Employeee (based on EmpID, Year, Month)
-app.get("/api/get-employee-attendance/:operationId/:date/:deptId/", async (req, res) => {
-  const operationId = req.params.operationId;
-  const date = req.params.date;
-  const deptId = req.params.deptId;
-// res.json({messgae:'get_Employee_attendance calling:::'})
+app.get(
+  "/api/get-employee-attendance/:operationId/:date/:deptId/",
+  async (req, res) => {
+    const operationId = req.params.operationId;
+    const date = req.params.date;
+    const deptId = req.params.deptId;
+
+    try {
+      const pool = await poolPromiseATDB;
+        const result = await pool
+          .request()
+          .input("param_OperationId", sql.NVarChar(2), operationId)
+          .input("param_Date", sql.NVarChar(10), date)
+          .input("param_DeptId", sql.NVarChar(10), deptId)
+          .execute("[dbo].[sp_GetEmployeeAttendance]");
+
+        res.json(result.recordset);
+    } catch (error) {
+      console.error(
+        "Error fetching employee attendance [dbo].[sp_GetEmployeeAttendance]: ",
+        error
+      );
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+app.get("/api/get-employee-attendance/", async (req, res) => {
+  const { operationId, deptId, year, month } = req.query;
   try {
     const pool = await poolPromiseATDB;
     const result = await pool
       .request()
       .input("param_OperationId", sql.NVarChar(2), operationId)
-      .input("param_Date", sql.NVarChar(10), date)
+      .input("param_Year", sql.SmallInt(10), year)
       .input("param_DeptId", sql.NVarChar(10), deptId)
+      .input("param_Month", sql.SmallInt, month)
       .execute("[dbo].[sp_GetEmployeeAttendance]");
 
     res.json(result.recordset);
+    res.json({ message: "calling the getEmployeeAttendance" });
   } catch (error) {
     console.error(
       "Error fetching employee attendance [dbo].[sp_GetEmployeeAttendance]: ",
@@ -220,7 +248,6 @@ app.get("/api/userroles", async (req, res) => {
   // return [];
 });
 
-
 // API for fetching watchlist details for today based on loginemail and current date
 app.get("/api/watchlist/:email/:date", async (req, res) => {
   const email = req.params.email;
@@ -245,7 +272,6 @@ app.get("/api/watchlist/:email/:date", async (req, res) => {
   // return [];
 });
 
-
 // API For Fetching the watchlist based on the logged-in users email
 app.get("/api/watchlist/:email", async (req, res) => {
   const email = req.params.email;
@@ -259,14 +285,10 @@ app.get("/api/watchlist/:email", async (req, res) => {
 
     res.json(result.recordset);
   } catch (error) {
-    console.error(
-      "Error fetching watch list [dbo].[sp_GetWatchList]: ",
-      error
-    );
+    console.error("Error fetching watch list [dbo].[sp_GetWatchList]: ", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 // API for deleting a watchlist
 app.delete("/api/watchlist/:email/:watchListId", async (req, res) => {
@@ -291,8 +313,6 @@ app.delete("/api/watchlist/:email/:watchListId", async (req, res) => {
   }
 });
 
-
-
 // API for getting watchlist by ID
 app.get("/api/watchlistdetails/:email/:id", async (req, res) => {
   const email = req.params.email;
@@ -308,16 +328,17 @@ app.get("/api/watchlistdetails/:email/:id", async (req, res) => {
 
     res.json(result.recordset);
   } catch (error) {
-    console.error("Error fetching watch list by ID [dbo].[sp_GetWatchListByID]: ", error);
+    console.error(
+      "Error fetching watch list by ID [dbo].[sp_GetWatchListByID]: ",
+      error
+    );
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
 // Define the PUT endpoint for updating watchlist data
 app.put("/api/watchlist/:watchlistId", async (req, res) => {
- 
   const watchlistId = req.params.watchlistId;
-
 
   const {
     param_LoggedInUserEmail,
@@ -329,8 +350,7 @@ app.put("/api/watchlist/:watchlistId", async (req, res) => {
     param_tvp_WatchListEmployees,
   } = req.body;
 
-
-  console.log("UPDATE/PUT WatchList" ,req.body)
+  console.log("UPDATE/PUT WatchList", req.body);
   try {
     // Get a connection pool from the database
     const pool = await poolPromiseATDB;
@@ -343,19 +363,35 @@ app.put("/api/watchlist/:watchlistId", async (req, res) => {
 
     // Add employee data to the TVP
     param_tvp_WatchListEmployees.forEach((emp) => {
-      tvp.rows.add( emp.EmployeeID ,emp.EmployeeName, emp.EmployeeEmail);
+      tvp.rows.add(emp.EmployeeID, emp.EmployeeName, emp.EmployeeEmail);
     });
 
     // Execute the stored procedure to update the watchlist
     const result = await pool
       .request()
-      .input("param_LoggedInUserEmail", sql.NVarChar(255), param_LoggedInUserEmail)
+      .input(
+        "param_LoggedInUserEmail",
+        sql.NVarChar(255),
+        param_LoggedInUserEmail
+      )
       .input("param_WatchListID", sql.BigInt, watchlistId)
       .input("param_WatchListName", sql.NVarChar(100), param_WatchListName)
-      .input("param_WatchListDescription", sql.NVarChar(255), param_WatchListDescription)
-      .input("param_WatchListPrimaryOwnerName", sql.NVarChar(255), param_WatchListPrimaryOwnerName)
-      .input("param_WatchListPrimaryOwnerEmail", sql.NVarChar(255), param_WatchListPrimaryOwnerEmail)
-      .input("param_tvp_WatchListEmployees", sql.TVP , tvp)
+      .input(
+        "param_WatchListDescription",
+        sql.NVarChar(255),
+        param_WatchListDescription
+      )
+      .input(
+        "param_WatchListPrimaryOwnerName",
+        sql.NVarChar(255),
+        param_WatchListPrimaryOwnerName
+      )
+      .input(
+        "param_WatchListPrimaryOwnerEmail",
+        sql.NVarChar(255),
+        param_WatchListPrimaryOwnerEmail
+      )
+      .input("param_tvp_WatchListEmployees", sql.TVP, tvp)
       .execute("[dbo].[sp_UpdateWatchList]");
 
     // Send a success response
@@ -366,7 +402,6 @@ app.put("/api/watchlist/:watchlistId", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 app.post("/api/watchlist/create", async (req, res) => {
   const {
@@ -384,21 +419,38 @@ app.post("/api/watchlist/create", async (req, res) => {
     const pool = await poolPromiseATDB;
 
     const tvp = new sql.Table();
-    tvp.columns.add('EmployeeID', sql.Int);
-    tvp.columns.add('EmployeeName', sql.NVarChar(255));
-    tvp.columns.add('EmployeeEmail', sql.NVarChar(255));
+    tvp.columns.add("EmployeeID", sql.Int);
+    tvp.columns.add("EmployeeName", sql.NVarChar(255));
+    tvp.columns.add("EmployeeEmail", sql.NVarChar(255));
 
-    param_tvp_WatchListEmployees.forEach((emp , index )=> {
-      tvp.rows.add ( emp.EmployeeID , emp.EmployeeName, emp.EmployeeEmail);   // index + 1, emp.EmpID 
+    param_tvp_WatchListEmployees.forEach((emp, index) => {
+      tvp.rows.add(emp.EmployeeID, emp.EmployeeName, emp.EmployeeEmail); // index + 1, emp.EmpID
     });
 
-    await pool.request()
-      .input("param_LoggedInUserEmail", sql.NVarChar(255), param_LoggedInUserEmail)
+    await pool
+      .request()
+      .input(
+        "param_LoggedInUserEmail",
+        sql.NVarChar(255),
+        param_LoggedInUserEmail
+      )
       .input("param_WatchListName", sql.NVarChar(255), param_WatchListName)
-      .input("param_WatchListDescription", sql.NVarChar(255), param_WatchListDescription)
-      .input("param_WatchListPrimaryOwnerName", sql.NVarChar(255), param_WatchListPrimaryOwnerName)
-      .input("param_WatchListPrimaryOwnerEmail", sql.NVarChar(255), param_WatchListPrimaryOwnerEmail)
-      .input("param_tvp_WatchListEmployees", sql.TVP , tvp)
+      .input(
+        "param_WatchListDescription",
+        sql.NVarChar(255),
+        param_WatchListDescription
+      )
+      .input(
+        "param_WatchListPrimaryOwnerName",
+        sql.NVarChar(255),
+        param_WatchListPrimaryOwnerName
+      )
+      .input(
+        "param_WatchListPrimaryOwnerEmail",
+        sql.NVarChar(255),
+        param_WatchListPrimaryOwnerEmail
+      )
+      .input("param_tvp_WatchListEmployees", sql.TVP, tvp)
       .execute("[dbo].[sp_CreateWatchList]");
 
     res.status(200).json({ message: "Watchlist created successfully" });
@@ -408,17 +460,10 @@ app.post("/api/watchlist/create", async (req, res) => {
   }
 });
 
-
 // app.get('*', (req, res) => {
 //   res.sendFile(path.join(__dirname, '../ReactUIApp/build', 'index.html'));
 // });
- 
 
 app.listen(PORT, () => {
   console.log(`Attendance Tracker Server is running on port: ${PORT}`);
 });
-
-
-
-
-
