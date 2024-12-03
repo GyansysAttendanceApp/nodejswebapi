@@ -216,7 +216,6 @@ app.get("/api/get-employee-attendance/", async (req, res) => {
       .execute("[dbo].[sp_GetEmployeeAttendance]");
 
     res.json(result.recordset);
-    res.json({ message: "calling the getEmployeeAttendance" });
   } catch (error) {
     console.error(
       "Error fetching employee attendance [dbo].[sp_GetEmployeeAttendance]: ",
