@@ -83,6 +83,59 @@ app.post("/api/integration-employee-data", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+
+
+
+// integrate - department-data 
+app.post("/api/integration-department-data", async (req, res) => {
+  const deparmentjson = req.body;
+  const jsonString = JSON.stringify(deparmentjson);
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool
+      .request()
+      .input("param_deparmentjson", sql.NVarChar(sql.MAX), jsonString)
+      .execute("sp_IntegrateDepartmentData");
+
+    res.json(result.recordset);
+  } catch (error) {
+    console.error(
+      "Error uploading integration data to sp_IntegrateDepartmentData: ",
+      error
+    );
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// integrate - gate-data 
+app.post("/api/integration-Gate-data", async (req, res) => {
+  const gatejson = req.body;
+  const jsonString = JSON.stringify(gatejson);
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool
+      .request()
+      .input("param_gatejson", sql.NVarChar(sql.MAX), jsonString)
+      .execute("sp_IntegrateGateData");
+
+    res.json(result.recordset);
+  } catch (error) {
+    console.error(
+      "Error uploading integration data to sp_IntegrateGateData: ",
+      error
+    );
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+
+
+
+
+
+
 //Integration End
 
 // below is for suggestion api (using Stored Procedure)
