@@ -95,7 +95,7 @@ app.post("/api/integration-department-data", async (req, res) => {
     const pool = await poolPromiseATDB;
     const result = await pool
       .request()
-      .input("param_deparmentjson", sql.NVarChar(sql.MAX), jsonString)
+      .input("param_deptjson", sql.NVarChar(sql.MAX), jsonString)
       .execute("sp_IntegrateDepartmentData");
 
     res.json(result.recordset);
