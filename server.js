@@ -17,8 +17,9 @@ const {
 const app = express();
 const PORT = process.env.PORT;
 const BASE_URL = "/attendance";
-`${BASE_URL}/api/employees`, app.use(bodyParser.json()); //comment
+`${BASE_URL}/api/employees`, app.use(bodyParser.json({ limit: '100mb' })); //comment
 app.use(cors());
+//app.use(bodyParser.json({ limit: '100mb' }));
 
 // app.use(express.static(path.join(__dirname, 'ReactUIApp/build')));
 //Integration Start
@@ -203,18 +204,21 @@ app.get(
     }
   }
 );
+
 app.get("/api/get-employee-attendance/", async (req, res) => {
-  const { operationId, deptId, year, month } = req.query;
+  const { operationId, deptId, empid, date,  year, month } = req.query;
+  console.log("req.query", req.query);
   try {
     const pool = await poolPromiseATDB;
     const result = await pool
       .request()
-      .input("param_OperationId", sql.NVarChar(2), operationId)
-      .input("param_Year", sql.SmallInt(10), year)
+      .input("param_OperationId", sql.NVarChar(2), operationId)  
       .input("param_DeptId", sql.NVarChar(10), deptId)
-      .input("param_Month", sql.SmallInt, month)
+      .input("param_EmpId", sql.NVarChar(10), empid || null)      
+      .input("param_Date", sql.NVarChar(10), date || null)     
+      .input("param_Year", sql.SmallInt, year || null)
+      .input("param_Month", sql.SmallInt, month || null)
       .execute("[dbo].[sp_GetEmployeeAttendance]");
-
     res.json(result.recordset);
   } catch (error) {
     console.error(
