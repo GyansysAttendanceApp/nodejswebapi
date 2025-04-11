@@ -1,10 +1,14 @@
 require("dotenv").config();
 
+const { getToken, verifyToken } = require('./middleware/authController');
+
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const os = require("os");
 const path = require("path");
+
+
 
 const {
   //  configNetXs,
@@ -19,13 +23,22 @@ const PORT = process.env.PORT;
 const BASE_URL = "/attendance";
 `${BASE_URL}/api/employees`, app.use(bodyParser.json({ limit: '100mb' })); //comment
 app.use(cors());
+
+
+
+// the below is the controller for token generation and verification
+app.post('/api/get-token', getToken);
+
+
 //app.use(bodyParser.json({ limit: '100mb' }));
 
 // app.use(express.static(path.join(__dirname, 'ReactUIApp/build')));
 //Integration Start
 // below is for suggestion api (using Stored Procedure)
 
-app.post("/api/get-last-sync-date", async (req, res) => {
+
+
+app.post("/api/get-last-sync-date", verifyToken, async (req, res) => {
   // const swipejson = req.body;
   // const jsonString = JSON.stringify(swipejson);
   try {
@@ -42,7 +55,7 @@ app.post("/api/get-last-sync-date", async (req, res) => {
   }
 });
 
-app.post("/api/integration-daily-swipe-data", async (req, res) => {
+app.post("/api/integration-daily-swipe-data", verifyToken, async (req, res) => {
   //const swipejson = req.query.swipejson;
   const swipejson = req.body;
   const jsonString = JSON.stringify(swipejson);
@@ -64,7 +77,7 @@ app.post("/api/integration-daily-swipe-data", async (req, res) => {
   }
 });
 
-app.post("/api/integration-employee-data", async (req, res) => {
+app.post("/api/integration-employee-data", verifyToken, async (req, res) => {
   const employeejson = req.body;
   const jsonString = JSON.stringify(employeejson);
   try {
@@ -88,7 +101,7 @@ app.post("/api/integration-employee-data", async (req, res) => {
 
 
 // integrate - department-data 
-app.post("/api/integration-department-data", async (req, res) => {
+app.post("/api/integration-department-data", verifyToken, async (req, res) => {
   const deparmentjson = req.body;
   const jsonString = JSON.stringify(deparmentjson);
   try {
@@ -109,7 +122,7 @@ app.post("/api/integration-department-data", async (req, res) => {
 });
 
 // integrate - gate-data 
-app.post("/api/integration-Gate-data", async (req, res) => {
+app.post("/api/integration-Gate-data", verifyToken, async (req, res) => {
   const gatejson = req.body;
   const jsonString = JSON.stringify(gatejson);
   try {
@@ -130,16 +143,10 @@ app.post("/api/integration-Gate-data", async (req, res) => {
 });
 
 
-
-
-
-
-
-
 //Integration End
 
 // below is for suggestion api (using Stored Procedure)
-app.get("/api/employees", async (req, res) => {
+app.get("/api/employees", verifyToken, async (req, res) => {
   const name = req.query.name;
 
   try {
@@ -157,7 +164,7 @@ app.get("/api/employees", async (req, res) => {
 });
 
 // below is sp api call this one is for handle search
-app.get("/api/attendance/:empId/:date", async (req, res) => {
+app.get("/api/attendance/:empId/:date", verifyToken, async (req, res) => {
   const empId = req.params.empId;
   const date = req.params.date;
 
@@ -180,7 +187,7 @@ app.get("/api/attendance/:empId/:date", async (req, res) => {
 });
 
 // below is sp query this is for table
-app.get("/api/dept", async (req, res) => {
+app.get("/api/dept", verifyToken, async (req, res) => {
   const date = req.query.date;
 
   sql
@@ -206,7 +213,7 @@ app.get("/api/dept", async (req, res) => {
 });
 
 // API for Daily Attendance History of Employeee (based on EmpID, Year, Month)
-app.get("/api/attendance/:empId/:year/:month", async (req, res) => {
+app.get("/api/attendance/:empId/:year/:month", verifyToken, async (req, res) => {
   const empId = req.params.empId;
   const year = req.params.year;
   const month = req.params.month;
@@ -233,7 +240,7 @@ app.get("/api/attendance/:empId/:year/:month", async (req, res) => {
 // API for Daily deptwise  Attendance History of Employeee (based on EmpID, Year, Month)
 app.get(
   "/api/get-employee-attendance/:operationId/:date/:deptId/",
-  async (req, res) => {
+  verifyToken, async (req, res) => {
     const operationId = req.params.operationId;
     const date = req.params.date;
     const deptId = req.params.deptId;
@@ -258,7 +265,7 @@ app.get(
   }
 );
 
-app.get("/api/get-employee-attendance/", async (req, res) => {
+app.get("/api/get-employee-attendance/", verifyToken, async (req, res) => {
   const { operationId, deptId, empid, date,  year, month } = req.query;
   console.log("req.query", req.query);
   try {
@@ -282,7 +289,7 @@ app.get("/api/get-employee-attendance/", async (req, res) => {
   }
 });
 //  API for fetching user roles based on EmployeeEmail
-app.get("/api/userroles", async (req, res) => {
+app.get("/api/userroles", verifyToken, async (req, res) => {
   const EmployeeEmail = req.query.email;
 
   if (!EmployeeEmail) {
@@ -305,7 +312,7 @@ app.get("/api/userroles", async (req, res) => {
 });
 
 // API for fetching watchlist details for today based on loginemail and current date
-app.get("/api/watchlist/:email/:date", async (req, res) => {
+app.get("/api/watchlist/:email/:date", verifyToken, async (req, res) => {
   const email = req.params.email;
   const date = req.params.date;
 
@@ -329,7 +336,7 @@ app.get("/api/watchlist/:email/:date", async (req, res) => {
 });
 
 // API For Fetching the watchlist based on the logged-in users email
-app.get("/api/watchlist/:email", async (req, res) => {
+app.get("/api/watchlist/:email", verifyToken, async (req, res) => {
   const email = req.params.email;
 
   try {
@@ -347,7 +354,7 @@ app.get("/api/watchlist/:email", async (req, res) => {
 });
 
 // API for deleting a watchlist
-app.delete("/api/watchlist/:email/:watchListId", async (req, res) => {
+app.delete("/api/watchlist/:email/:watchListId", verifyToken, async (req, res) => {
   const email = req.params.email;
   const watchListId = req.params.watchListId;
 
@@ -370,7 +377,7 @@ app.delete("/api/watchlist/:email/:watchListId", async (req, res) => {
 });
 
 // API for getting watchlist by ID
-app.get("/api/watchlistdetails/:email/:id", async (req, res) => {
+app.get("/api/watchlistdetails/:email/:id", verifyToken, async (req, res) => {
   const email = req.params.email;
   const watchListId = req.params.id;
 
@@ -393,7 +400,7 @@ app.get("/api/watchlistdetails/:email/:id", async (req, res) => {
 });
 
 // Define the PUT endpoint for updating watchlist data
-app.put("/api/watchlist/:watchlistId", async (req, res) => {
+app.put("/api/watchlist/:watchlistId", verifyToken, async (req, res) => {
   const watchlistId = req.params.watchlistId;
 
   const {
@@ -459,7 +466,7 @@ app.put("/api/watchlist/:watchlistId", async (req, res) => {
   }
 });
 
-app.post("/api/watchlist/create", async (req, res) => {
+app.post("/api/watchlist/create", verifyToken, async (req, res) => {
   const {
     param_LoggedInUserEmail,
     param_WatchListName,
