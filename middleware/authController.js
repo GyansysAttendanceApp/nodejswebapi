@@ -5,7 +5,7 @@ const getToken = (req, res) => {
   const { apiId, apiKey } = req.body;
 
   if (apiId === process.env.API_ID && apiKey === process.env.API_KEY) {
-    const token = jwt.sign({ apiId }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ apiId }, process.env.JWT_SECRET, { expiresIn: '20m' });
     return res.json({ token });
   } else {
     return res.status(401).json({ message: 'Invalid API credentials' });
