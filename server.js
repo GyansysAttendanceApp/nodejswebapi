@@ -148,12 +148,14 @@ app.post("/api/integration-Gate-data", verifyToken, async (req, res) => {
 // below is for suggestion api (using Stored Procedure)
 app.get("/api/employees", verifyToken, async (req, res) => {
   const name = req.query.name;
+  // const email = req.query.email;
 
   try {
     const pool = await poolPromiseATDB;
     const result = await pool
       .request()
       .input("param_EmpName", sql.NVarChar, `${name}`)
+      // .input("param_EmpEmail", sql.NVarChar, `${email}`)
       .execute("sp_SearchEmployeesByName");
 
     res.json(result.recordset);
@@ -226,10 +228,12 @@ app.get("/api/dept", verifyToken, async (req, res) => {
       // request.input("param_LoggedInUserEmail", sql.VarChar, email);
       request
         .execute("sp_GetDeptwiseAttendance_dev")
+        .execute("sp_GetDeptwiseAttendance_dev")
         .then((result) => {
           return res.json(result.recordset);
         })
         .catch((err) => {
+          console.error(`Error executing sp_GetDeptwiseAttendance_dev: ${err}`);
           console.error(`Error executing sp_GetDeptwiseAttendance_dev: ${err}`);
         });
     })
@@ -663,6 +667,126 @@ app.post('/api/employeereport/:empid/report', async (req, res) => {
 // app.get('*', (req, res) => {
 //   res.sendFile(path.join(__dirname, '../ReactUIApp/build', 'index.html'));
 // });
+
+
+/** 1️⃣ Get Dept/Sub‑Dept list */
+app.get('/api/deptsubdept',verifyToken ,async (req, res) => {
+  try {
+    const pool = await poolPromiseATDB; // Corrected pool reference
+    const result = await pool.request().execute('sp_GetDeptSubDeptMapping');
+    res.json(result.recordset);
+  } catch (err) {
+    console.error('Error fetching Dept/Sub-Dept list:', err.message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+/** 2️⃣ Search employees by name */
+app.get('/api/employeedpt',verifyToken, async (req, res) => {
+  const search = req.query.search || '';
+  try {
+    const pool = await poolPromiseATDB; // Corrected pool reference
+    const result = await pool
+      .request()
+      .input('SearchTerm', sql.NVarChar(100), search)
+      .execute('sp_SearchEmployees');
+    res.json(result.recordset);
+  } catch (err) {
+    console.error('Error searching employees:', err.message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+/** 3️⃣ Insert new Dept‑Manager mapping */
+app.post('/api/deptmanager', verifyToken,async (req, res) => {
+  const {
+    DeptId,
+    DeptName,
+    SubDeptId,
+    SubDeptName,
+    ManagerId,
+    ManagerEmail,
+  } = req.body;
+
+  if (!DeptId || !DeptName || !SubDeptId || !ManagerId || !ManagerEmail) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    const pool = await poolPromiseATDB; // Corrected pool reference
+    await pool
+      .request()
+      .input('DeptId', sql.NVarChar(50), DeptId)
+      .input('DeptName', sql.NVarChar(50), DeptName)
+      .input('SubDeptId', sql.NVarChar(50), SubDeptId)
+      .input('SubDeptName', sql.NVarChar(150), SubDeptName)
+      .input('ManagerId', sql.NVarChar(50), ManagerId)
+      .input('ManagerEmail', sql.NVarChar(100), ManagerEmail)
+      .execute('sp_InsertDeptManagerMapping');
+    res.status(201).json({ message: 'Mapping created successfully.' });
+  } catch (err) {
+    console.error('Error inserting Dept-Manager mapping:', err.message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+/** 4️⃣ Read all mappings */
+app.get('/api/deptmanager', verifyToken,async (req, res) => {
+  try {
+    const pool = await poolPromiseATDB; // Corrected pool reference
+    const result = await pool.request().execute('sp_GetDeptManagerMappings');
+    res.json(result.recordset);
+  } catch (err) {
+    console.error('Error fetching Dept-Manager mappings:', err.message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+/** 5️⃣ Update mapping */
+app.put('/api/deptmanager/:deptId/:subDeptId', verifyToken,async (req, res) => {
+  const { deptId, subDeptId } = req.params;
+  const { ManagerId, ManagerEmail } = req.body;
+
+  if (!ManagerId || !ManagerEmail) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    const pool = await poolPromiseATDB; // Corrected pool reference
+    await pool
+      .request()
+      .input('DeptId', sql.NVarChar(50), deptId)
+      .input('SubDeptId', sql.NVarChar(50), subDeptId)
+      .input('ManagerId', sql.NVarChar(50), ManagerId)
+      .input('ManagerEmail', sql.NVarChar(100), ManagerEmail)
+      .execute('sp_UpdateDeptManagerMapping');
+    res.json({ message: 'Mapping updated successfully.' });
+  } catch (err) {
+    console.error('Error updating Dept-Manager mapping:', err.message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+/** 6️⃣ Delete mapping */
+app.delete('/api/deptmanager/:deptId/:subDeptId', verifyToken,async (req, res) => {
+  const { deptId, subDeptId } = req.params;
+
+  try {
+    const pool = await poolPromiseATDB; // Corrected pool reference
+    await pool
+      .request()
+      .input('DeptId', sql.NVarChar(50), deptId)
+      .input('SubDeptId', sql.NVarChar(50), subDeptId)
+      .execute('sp_DeleteDeptManagerMapping');
+    res.json({ message: 'Mapping deleted successfully.' });
+  } catch (err) {
+    console.error('Error deleting Dept-Manager mapping:', err.message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+
 
 app.listen(PORT, () => {
   console.log(`Attendance Tracker Server is running on port: ${PORT}`);
