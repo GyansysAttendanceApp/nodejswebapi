@@ -187,23 +187,50 @@ app.get("/api/attendance/:empId/:date", verifyToken, async (req, res) => {
 });
 
 // below is sp query this is for table
+// app.get("/api/dept", verifyToken, async (req, res) => {
+//   const date = req.query.date;
+
+//   sql
+//     .connect(configATDB)
+//     .then(() => {
+//       const request = new sql.Request();
+
+//       request.input("param_Date", sql.VarChar, date);
+
+//       request
+//         .execute("sp_GetDeptwiseAttendance")
+//         .then((result) => {
+//           return res.json(result.recordset);
+//         })
+//         .catch((err) => {
+//           console.error(`Error executing sp_GetDeptwiseAttendance: ${err}`);
+//         });
+//     })
+//     .catch((err) => {
+//       console.error(err);
+//     });
+//   // return [];
+// });
+
 app.get("/api/dept", verifyToken, async (req, res) => {
   const date = req.query.date;
-
+  const transitionDate = "2025-04-16";
+  // const email = req.query.email;
   sql
     .connect(configATDB)
     .then(() => {
       const request = new sql.Request();
-
-      request.input("param_Date", sql.VarChar, date);
-
+ 
+      request.input("param_Date", sql.Date, date);
+      request.input("TransitionDate", sql.Date, transitionDate);
+      // request.input("param_LoggedInUserEmail", sql.VarChar, email);
       request
-        .execute("sp_GetDeptwiseAttendance")
+        .execute("sp_GetDeptwiseAttendance_dev")
         .then((result) => {
           return res.json(result.recordset);
         })
         .catch((err) => {
-          console.error(`Error executing sp_GetDeptwiseAttendance: ${err}`);
+          console.error(`Error executing sp_GetDeptwiseAttendance_dev: ${err}`);
         });
     })
     .catch((err) => {
@@ -211,31 +238,62 @@ app.get("/api/dept", verifyToken, async (req, res) => {
     });
   // return [];
 });
+ 
 
-// API for Daily Attendance History of Employeee (based on EmpID, Year, Month)
-app.get("/api/attendance/:empId/:year/:month", verifyToken, async (req, res) => {
-  const empId = req.params.empId;
-  const year = req.params.year;
-  const month = req.params.month;
+// // API for Daily Attendance History of Employeee (based on EmpID, Year, Month)
+// app.get("/api/attendance/:empId/:year/:month", verifyToken, async (req, res) => {
+//   const empId = req.params.empId;
+//   const year = req.params.year;
+//   const month = req.params.month;
 
-  try {
-    const pool = await poolPromiseATDB;
-    const result = await pool
-      .request()
-      .input("param_EmpID", sql.NVarChar, empId)
-      .input("param_Year", sql.NVarChar, year)
-      .input("param_Month", sql.NVarChar, month)
-      .execute("[dbo].[sp_GetDailyAttendanceHistory]");
+//   try {
+//     const pool = await poolPromiseATDB;
+//     const result = await pool
+//       .request()
+//       .input("param_EmpID", sql.NVarChar, empId)
+//       .input("param_Year", sql.NVarChar, year)
+//       .input("param_Month", sql.NVarChar, month)
+//       .execute("[dbo].[sp_GetDailyAttendanceHistory]");
 
-    res.json(result.recordset);
-  } catch (error) {
-    console.error(
-      "Error fetching employee attendance history [dbo].[sp_GetDailyAttendanceHistory]: ",
-      error
-    );
-    res.status(500).json({ error: "Internal Server Error" });
+//     res.json(result.recordset);
+//   } catch (error) {
+//     console.error(
+//       "Error fetching employee attendance history [dbo].[sp_GetDailyAttendanceHistory]: ",
+//       error
+//     );
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
+
+app.get(
+  "/api/get-employee-attendance/:operationId/:date/:deptId/:subdeptId",
+  verifyToken,
+  async (req, res) => {
+    const operationId = req.params.operationId;
+    const date = req.params.date;
+    const deptId = req.params.deptId;
+    const subDeptId = req.params.subdeptId || null;
+ 
+    try {
+      const pool = await poolPromiseATDB;
+      const result = await pool
+        .request()
+        .input("param_OperationId", sql.NVarChar(2), operationId)
+        .input("param_Date", sql.NVarChar(10), date)
+        .input("param_DeptId", sql.NVarChar(10), deptId)
+        .input("param_SubDeptID", sql.NVarChar(10), subDeptId)
+        .execute("[dbo].[sp_GetEmployeeAttendance_NEW]");
+ 
+      res.json(result.recordset);
+    } catch (error) {
+      console.error(
+        "Error fetching employee attendance [dbo].[sp_GetEmployeeAttendance]: ",
+        error
+      );
+      res.status(500).json({ error: "Internal Server Error" });
+    }
   }
-});
+);
 
 // API for Daily deptwise  Attendance History of Employeee (based on EmpID, Year, Month)
 app.get(
@@ -520,6 +578,85 @@ app.post("/api/watchlist/create", verifyToken, async (req, res) => {
   } catch (error) {
     console.error("Error creating watchlist: ", error);
     res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// 1) GET Dept‑SubDept mapping
+app.get('/api/deptsubdeptmapping', async (req, res) => {
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool.request()
+      .execute('sp_GetDeptSubDeptMapping');
+
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    console.error('Error fetching dept‑subdept mapping:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// // 2) GET all employees (with optional dept/sub filters)
+// app.get('/api/employeereport', async (req, res) => {
+//   const { deptid, subdeptid } = req.query;
+//   try {
+//     const pool = await poolPromiseATDB;
+//     const result = await pool.request()
+//       .execute('usp_GetAllEmployeeStatus');
+
+//     let rows = result.recordset;
+//     if (deptid)    rows = rows.filter(r => r.Deptid === parseInt(deptid));
+//     if (subdeptid) rows = rows.filter(r => r.Subdeptid === parseInt(subdeptid));
+
+//     res.status(200).json(rows);
+//   } catch (err) {
+//     console.error('Error fetching employee list:', err);
+//     res.status(500).json({ error: 'Internal Server Error' });
+//   }
+// });
+
+app.get('/api/employeereport', async (req, res) => {
+  const { deptid, subdeptid } = req.query;
+  try {
+    const pool = await poolPromiseATDB;
+    const request = pool.request();
+
+    if (deptid && !isNaN(parseInt(deptid))) {
+      request.input('deptid', sql.Int, parseInt(deptid));
+    }
+    if (subdeptid) {
+      request.input('subdeptid', sql.VarChar(50), subdeptid);
+    }
+
+    const result = await request.execute('usp_GetAllEmployeeStatus');
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    console.error('Error fetching employee list:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// 3) POST update employee report
+app.post('/api/employeereport/:empid/report', async (req, res) => {
+  const { empid } = req.params;
+  const { report } = req.body;
+  if (!report) return res.status(400).json({ error: 'Report content is required' });
+
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool.request()
+      .input('Empid',   sql.NVarChar(15), empid)
+      .input('Report',  sql.NVarChar(sql.MAX), report)
+      .execute('sp_UpdateEmployeeReport');
+
+    // return updated row
+    if (result.recordset.length > 0) {
+      res.status(200).json(result.recordset[0]);
+    } else {
+      res.status(404).json({ error: 'Employee not found' });
+    }
+  } catch (err) {
+    console.error('Error updating employee report:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
