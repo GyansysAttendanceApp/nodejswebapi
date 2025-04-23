@@ -28,7 +28,7 @@ const getToken = (req, res) => {
   }
 
   // Valid → issue token
-  const token = jwt.sign({ access: 'frontend' }, process.env.JWT_SECRET, { expiresIn: '20m' });
+  const token = jwt.sign({ access: 'frontend' }, process.env.JWT_SECRET, { expiresIn: '30m' });
   return res.json({ token });
 };
 

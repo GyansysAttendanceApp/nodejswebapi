@@ -216,16 +216,17 @@ app.get("/api/attendance/:empId/:date", verifyToken, async (req, res) => {
 
 app.get("/api/dept", verifyToken, async (req, res) => {
   const date = req.query.date;
+  const email = req.query.email;
   const transitionDate = "2025-04-16";
-  // const email = req.query.email;
+ 
   sql
     .connect(configATDB)
     .then(() => {
       const request = new sql.Request();
- 
+      request.input("ManagerEmail", sql.NVarChar, email);
       request.input("param_Date", sql.Date, date);
       request.input("TransitionDate", sql.Date, transitionDate);
-      // request.input("param_LoggedInUserEmail", sql.VarChar, email);
+      
       request
         .execute("sp_GetDeptwiseAttendance_dev")
        
