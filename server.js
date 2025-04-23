@@ -228,12 +228,11 @@ app.get("/api/dept", verifyToken, async (req, res) => {
       // request.input("param_LoggedInUserEmail", sql.VarChar, email);
       request
         .execute("sp_GetDeptwiseAttendance_dev")
-        .execute("sp_GetDeptwiseAttendance_dev")
+       
         .then((result) => {
           return res.json(result.recordset);
         })
         .catch((err) => {
-          console.error(`Error executing sp_GetDeptwiseAttendance_dev: ${err}`);
           console.error(`Error executing sp_GetDeptwiseAttendance_dev: ${err}`);
         });
     })
@@ -245,29 +244,29 @@ app.get("/api/dept", verifyToken, async (req, res) => {
  
 
 // // API for Daily Attendance History of Employeee (based on EmpID, Year, Month)
-// app.get("/api/attendance/:empId/:year/:month", verifyToken, async (req, res) => {
-//   const empId = req.params.empId;
-//   const year = req.params.year;
-//   const month = req.params.month;
+app.get("/api/attendance/:empId/:year/:month", verifyToken, async (req, res) => {
+  const empId = req.params.empId;
+  const year = req.params.year;
+  const month = req.params.month;
 
-//   try {
-//     const pool = await poolPromiseATDB;
-//     const result = await pool
-//       .request()
-//       .input("param_EmpID", sql.NVarChar, empId)
-//       .input("param_Year", sql.NVarChar, year)
-//       .input("param_Month", sql.NVarChar, month)
-//       .execute("[dbo].[sp_GetDailyAttendanceHistory]");
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool
+      .request()
+      .input("param_EmpID", sql.NVarChar, empId)
+      .input("param_Year", sql.NVarChar, year)
+      .input("param_Month", sql.NVarChar, month)
+      .execute("[dbo].[sp_GetDailyAttendanceHistory]");
 
-//     res.json(result.recordset);
-//   } catch (error) {
-//     console.error(
-//       "Error fetching employee attendance history [dbo].[sp_GetDailyAttendanceHistory]: ",
-//       error
-//     );
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
+    res.json(result.recordset);
+  } catch (error) {
+    console.error(
+      "Error fetching employee attendance history [dbo].[sp_GetDailyAttendanceHistory]: ",
+      error
+    );
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 app.get(
   "/api/get-employee-attendance/:operationId/:date/:deptId/:subdeptId",
@@ -784,8 +783,6 @@ app.delete('/api/deptmanager/:deptId/:subDeptId', verifyToken,async (req, res) =
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
-
-
 
 
 app.listen(PORT, () => {
