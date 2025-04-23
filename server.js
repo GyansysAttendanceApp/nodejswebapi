@@ -148,14 +148,14 @@ app.post("/api/integration-Gate-data", verifyToken, async (req, res) => {
 // below is for suggestion api (using Stored Procedure)
 app.get("/api/employees", verifyToken, async (req, res) => {
   const name = req.query.name;
-  // const email = req.query.email;
+  const email = req.query.email;
 
   try {
     const pool = await poolPromiseATDB;
     const result = await pool
       .request()
       .input("param_EmpName", sql.NVarChar, `${name}`)
-      // .input("param_EmpEmail", sql.NVarChar, `${email}`)
+      .input("param_ManagerEmail", sql.NVarChar, `${email}`)
       .execute("sp_SearchEmployeesByName");
 
     res.json(result.recordset);
@@ -743,33 +743,32 @@ app.get('/api/deptmanager', verifyToken,async (req, res) => {
 });
 
 /** 5️⃣ Update mapping */
-app.put('/api/deptmanager/:deptId/:subDeptId', verifyToken,async (req, res) => {
-  const { deptId, subDeptId } = req.params;
-  const { ManagerId, ManagerEmail } = req.body;
-
-  if (!ManagerId || !ManagerEmail) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
+app.put('/api/deptmanager/:deptId/:subDeptId/:oldManagerId', verifyToken, async (req, res) => {
+  const { deptId, subDeptId, oldManagerId } = req.params;
+  const { ManagerId: newManagerId, ManagerEmail } = req.body;
 
   try {
-    const pool = await poolPromiseATDB; // Corrected pool reference
-    await pool
-      .request()
+    const pool = await poolPromiseATDB; // Ensure poolPromiseATDB is used
+    await pool.request()
       .input('DeptId', sql.NVarChar(50), deptId)
       .input('SubDeptId', sql.NVarChar(50), subDeptId)
-      .input('ManagerId', sql.NVarChar(50), ManagerId)
+      .input('OldManagerId', sql.NVarChar(50), oldManagerId)
+      .input('NewManagerId', sql.NVarChar(50), newManagerId)
       .input('ManagerEmail', sql.NVarChar(100), ManagerEmail)
       .execute('sp_UpdateDeptManagerMapping');
-    res.json({ message: 'Mapping updated successfully.' });
+
+    res.status(200).json({ message: 'Mapping updated successfully.' });
   } catch (err) {
     console.error('Error updating Dept-Manager mapping:', err.message);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
+
+
 /** 6️⃣ Delete mapping */
-app.delete('/api/deptmanager/:deptId/:subDeptId', verifyToken,async (req, res) => {
-  const { deptId, subDeptId } = req.params;
+app.delete('/api/deptmanager/:deptId/:subDeptId/:managerId', verifyToken, async (req, res) => {
+  const { deptId, subDeptId, managerId } = req.params;
 
   try {
     const pool = await poolPromiseATDB; // Corrected pool reference
@@ -777,6 +776,7 @@ app.delete('/api/deptmanager/:deptId/:subDeptId', verifyToken,async (req, res) =
       .request()
       .input('DeptId', sql.NVarChar(50), deptId)
       .input('SubDeptId', sql.NVarChar(50), subDeptId)
+      .input('ManagerId', sql.NVarChar(50), managerId)
       .execute('sp_DeleteDeptManagerMapping');
     res.json({ message: 'Mapping deleted successfully.' });
   } catch (err) {
