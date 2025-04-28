@@ -279,8 +279,9 @@ app.get(
         .input("param_DeptId", sql.NVarChar(10), deptId)
         .input("param_SubDeptID", sql.NVarChar(10), subDeptId)
         .execute("[dbo].[sp_GetEmployeeAttendance_NEW]");
-
+       
       res.json(result.recordset);
+      console.log('executed',result.recordset);
     } catch (error) {
       console.error(
         "Error fetching employee attendance [dbo].[sp_GetEmployeeAttendance]: ",
@@ -290,6 +291,32 @@ app.get(
     }
   }
 );
+//monthly report 
+app.get("/api/monthly-attendance", verifyToken, async (req, res) => {
+  const { operationId, deptId, year, month, subDeptId } = req.query;
+
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool
+      .request()
+      .input("param_OperationId", sql.NVarChar(2), operationId)
+      .input("param_DeptId", sql.NVarChar(10), deptId)
+      .input("param_Year", sql.NVarChar(4), year)
+      .input("param_Month", sql.NVarChar(2), month)
+      .input("param_SubDeptID", sql.NVarChar(10), subDeptId || null)
+      .execute("[dbo].[sp_GetEmployeeAttendance_NEW]");
+
+    res.status(200).json(result.recordset);
+    console.log("Executed successfully:", result.recordset);
+  } catch (error) {
+    console.error(
+      "Error executing [dbo].[sp_GetEmployeeAttendance_NEW]: ",
+      error
+    );
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 // API for Daily deptwise  Attendance History of Employeee (based on EmpID, Year, Month)
 app.get(
@@ -333,8 +360,10 @@ app.get("/api/get-employee-attendance/", verifyToken, async (req, res) => {
       .input("param_Date", sql.NVarChar(10), date || null)
       .input("param_Year", sql.SmallInt, year || null)
       .input("param_Month", sql.SmallInt, month || null)
+     
       .execute("[dbo].[sp_GetEmployeeAttendance]");
     res.json(result.recordset);
+    
   } catch (error) {
     console.error(
       "Error fetching employee attendance [dbo].[sp_GetEmployeeAttendance]: ",
