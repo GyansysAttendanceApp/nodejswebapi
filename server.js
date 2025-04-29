@@ -291,6 +291,30 @@ app.get(
     }
   }
 );
+
+app.put("/api/update-expected-count", verifyToken, async (req, res) => {
+  const { deptId, subDeptId, newExpectedCount } = req.body;
+
+  if (!deptId || !newExpectedCount) {
+    return res.status(400).json({ error: "DeptID and NewExpectedCount are required" });
+  }
+
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool
+      .request()
+      .input("DeptID", sql.NVarChar(10), deptId)
+      .input("SubDeptID", sql.NVarChar(10), subDeptId || null) // SubDeptID is optional
+      .input("NewExpectedCount", sql.Int, newExpectedCount)
+      .execute("sp_UpdateExpectedCount");
+
+    res.status(200).json({ message: "Expected count updated successfully", result: result.recordset });
+  } catch (error) {
+    console.error("Error executing sp_UpdateExpectedCount: ", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 //monthly report 
 app.get("/api/monthly-attendance", verifyToken, async (req, res) => {
   const { operationId, deptId, year, month, subDeptId } = req.query;
