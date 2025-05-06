@@ -1,13 +1,13 @@
 require("dotenv").config();
-
+ 
 const { getToken, verifyToken } = require("./middleware/authController");
-
+ 
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const os = require("os");
 const path = require("path");
-
+ 
 const {
   //  configNetXs,
   configATDB,
@@ -15,22 +15,22 @@ const {
   //  poolPromiseNetXs,
   poolPromiseATDB,
 } = require("./db");
-
+ 
 const app = express();
 const PORT = process.env.PORT;
 const BASE_URL = "/attendance";
 `${BASE_URL}/api/employees`, app.use(bodyParser.json({ limit: "100mb" })); //comment
 app.use(cors());
-
+ 
 // the below is the controller for token generation and verification
 app.post("/api/get-token", getToken);
-
+ 
 //app.use(bodyParser.json({ limit: '100mb' }));
-
+ 
 // app.use(express.static(path.join(__dirname, 'ReactUIApp/build')));
 //Integration Start
 // below is for suggestion api (using Stored Procedure)
-
+ 
 app.post("/api/get-last-sync-date", verifyToken, async (req, res) => {
   // const swipejson = req.body;
   // const jsonString = JSON.stringify(swipejson);
@@ -47,8 +47,8 @@ app.post("/api/get-last-sync-date", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-app.post("/api/integration-daily-swipe-data", verifyToken, async (req, res) => {
+ 
+app.post("/api/integration-daily-swipe-data", async (req, res) => {
   //const swipejson = req.query.swipejson;
   const swipejson = req.body;
   const jsonString = JSON.stringify(swipejson);
@@ -59,7 +59,7 @@ app.post("/api/integration-daily-swipe-data", verifyToken, async (req, res) => {
       .input("param_swipejson", sql.NVarChar(sql.MAX), jsonString)
       .execute("sp_IntegrateDailySwipeData");
     //input("json", sql.NVarChar(sql.MAX), jsonString)
-
+ 
     res.json(result.recordset);
   } catch (error) {
     console.error(
@@ -69,8 +69,8 @@ app.post("/api/integration-daily-swipe-data", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-app.post("/api/integration-employee-data", verifyToken, async (req, res) => {
+ 
+app.post("/api/integration-employee-data", async (req, res) => {
   const employeejson = req.body;
   const jsonString = JSON.stringify(employeejson);
   try {
@@ -79,7 +79,7 @@ app.post("/api/integration-employee-data", verifyToken, async (req, res) => {
       .request()
       .input("param_employeejson", sql.NVarChar(sql.MAX), jsonString)
       .execute("sp_IntegrateEmployeeData");
-
+ 
     res.json(result.recordset);
   } catch (error) {
     console.error(
@@ -89,9 +89,9 @@ app.post("/api/integration-employee-data", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 // integrate - department-data
-app.post("/api/integration-department-data", verifyToken, async (req, res) => {
+app.post("/api/integration-department-data", async (req, res) => {
   const deparmentjson = req.body;
   const jsonString = JSON.stringify(deparmentjson);
   try {
@@ -100,7 +100,7 @@ app.post("/api/integration-department-data", verifyToken, async (req, res) => {
       .request()
       .input("param_deptjson", sql.NVarChar(sql.MAX), jsonString)
       .execute("sp_IntegrateDepartmentData");
-
+ 
     res.json(result.recordset);
   } catch (error) {
     console.error(
@@ -110,9 +110,9 @@ app.post("/api/integration-department-data", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 // integrate - gate-data
-app.post("/api/integration-Gate-data", verifyToken, async (req, res) => {
+app.post("/api/integration-Gate-data", async (req, res) => {
   const gatejson = req.body;
   const jsonString = JSON.stringify(gatejson);
   try {
@@ -121,7 +121,7 @@ app.post("/api/integration-Gate-data", verifyToken, async (req, res) => {
       .request()
       .input("param_gatejson", sql.NVarChar(sql.MAX), jsonString)
       .execute("sp_IntegrateGateData");
-
+ 
     res.json(result.recordset);
   } catch (error) {
     console.error(
@@ -131,14 +131,14 @@ app.post("/api/integration-Gate-data", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 //Integration End
-
+ 
 // below is for suggestion api (using Stored Procedure)
 app.get("/api/employees", verifyToken, async (req, res) => {
   const name = req.query.name;
   const email = req.query.email;
-
+ 
   try {
     const pool = await poolPromiseATDB;
     const result = await pool
@@ -146,19 +146,19 @@ app.get("/api/employees", verifyToken, async (req, res) => {
       .input("param_EmpName", sql.NVarChar, `${name}`)
       .input("param_ManagerEmail", sql.NVarChar, `${email}`)
       .execute("sp_SearchEmployeesByName");
-
+ 
     res.json(result.recordset);
   } catch (error) {
     console.error("Error fetching employees sp_SearchEmployeesByName: ", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 // below is sp api call this one is for handle search
 app.get("/api/attendance/:empId/:date", verifyToken, async (req, res) => {
   const empId = req.params.empId;
   const date = req.params.date;
-
+ 
   try {
     const pool = await poolPromiseATDB;
     const result = await pool
@@ -166,7 +166,7 @@ app.get("/api/attendance/:empId/:date", verifyToken, async (req, res) => {
       .input("param_EmpID", sql.NVarChar, empId)
       .input("param_Date", sql.NVarChar, date)
       .execute("sp_GetEmpAttendance");
-
+ 
     res.json(result.recordset);
   } catch (error) {
     console.error(
@@ -176,18 +176,18 @@ app.get("/api/attendance/:empId/:date", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 // below is sp query this is for table
 // app.get("/api/dept", verifyToken, async (req, res) => {
 //   const date = req.query.date;
-
+ 
 //   sql
 //     .connect(configATDB)
 //     .then(() => {
 //       const request = new sql.Request();
-
+ 
 //       request.input("param_Date", sql.VarChar, date);
-
+ 
 //       request
 //         .execute("sp_GetDeptwiseAttendance")
 //         .then((result) => {
@@ -202,12 +202,12 @@ app.get("/api/attendance/:empId/:date", verifyToken, async (req, res) => {
 //     });
 //   // return [];
 // });
-
+ 
 app.get("/api/dept", verifyToken, async (req, res) => {
   const date = req.query.date;
   const email = req.query.email;
   const transitionDate = "2025-04-16";
-
+ 
   sql
     .connect(configATDB)
     .then(() => {
@@ -215,10 +215,10 @@ app.get("/api/dept", verifyToken, async (req, res) => {
       request.input("ManagerEmail", sql.NVarChar, email);
       request.input("param_Date", sql.Date, date);
       request.input("TransitionDate", sql.Date, transitionDate);
-
+ 
       request
         .execute("sp_GetDeptwiseAttendance_dev")
-
+ 
         .then((result) => {
           return res.json(result.recordset);
         })
@@ -231,7 +231,7 @@ app.get("/api/dept", verifyToken, async (req, res) => {
     });
   // return [];
 });
-
+ 
 // // API for Daily Attendance History of Employeee (based on EmpID, Year, Month)
 app.get(
   "/api/attendance/:empId/:year/:month",
@@ -240,7 +240,7 @@ app.get(
     const empId = req.params.empId;
     const year = req.params.year;
     const month = req.params.month;
-
+ 
     try {
       const pool = await poolPromiseATDB;
       const result = await pool
@@ -249,7 +249,7 @@ app.get(
         .input("param_Year", sql.NVarChar, year)
         .input("param_Month", sql.NVarChar, month)
         .execute("[dbo].[sp_GetDailyAttendanceHistory]");
-
+ 
       res.json(result.recordset);
     } catch (error) {
       console.error(
@@ -260,7 +260,7 @@ app.get(
     }
   }
 );
-
+ 
 app.get(
   "/api/get-employee-attendance/:operationId/:date/:deptId/:subdeptId",
   verifyToken,
@@ -269,7 +269,7 @@ app.get(
     const date = req.params.date;
     const deptId = req.params.deptId;
     const subDeptId = req.params.subdeptId || null;
-
+ 
     try {
       const pool = await poolPromiseATDB;
       const result = await pool
@@ -291,14 +291,14 @@ app.get(
     }
   }
 );
-
+ 
 app.put("/api/update-expected-count", verifyToken, async (req, res) => {
   const { deptId, subDeptId, newExpectedCount } = req.body;
-
+ 
   if (!deptId || !newExpectedCount) {
     return res.status(400).json({ error: "DeptID and NewExpectedCount are required" });
   }
-
+ 
   try {
     const pool = await poolPromiseATDB;
     const result = await pool
@@ -307,18 +307,18 @@ app.put("/api/update-expected-count", verifyToken, async (req, res) => {
       .input("SubDeptID", sql.NVarChar(10), subDeptId || null) // SubDeptID is optional
       .input("NewExpectedCount", sql.Int, newExpectedCount)
       .execute("sp_UpdateExpectedCount");
-
+ 
     res.status(200).json({ message: "Expected count updated successfully", result: result.recordset });
   } catch (error) {
     console.error("Error executing sp_UpdateExpectedCount: ", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-//monthly report 
+ 
+//monthly report
 app.get("/api/monthly-attendance", verifyToken, async (req, res) => {
   const { operationId, deptId, year, month, subDeptId } = req.query;
-
+ 
   try {
     const pool = await poolPromiseATDB;
     const result = await pool
@@ -329,7 +329,7 @@ app.get("/api/monthly-attendance", verifyToken, async (req, res) => {
       .input("param_Month", sql.NVarChar(2), month)
       .input("param_SubDeptID", sql.NVarChar(10), subDeptId || null)
       .execute("[dbo].[sp_GetEmployeeAttendance_NEW]");
-
+ 
     res.status(200).json(result.recordset);
     console.log("Executed successfully:", result.recordset);
   } catch (error) {
@@ -340,8 +340,8 @@ app.get("/api/monthly-attendance", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-
+ 
+ 
 // API for Daily deptwise  Attendance History of Employeee (based on EmpID, Year, Month)
 app.get(
   "/api/get-employee-attendance/:operationId/:date/:deptId/",
@@ -350,7 +350,7 @@ app.get(
     const operationId = req.params.operationId;
     const date = req.params.date;
     const deptId = req.params.deptId;
-
+ 
     try {
       const pool = await poolPromiseATDB;
       const result = await pool
@@ -359,7 +359,7 @@ app.get(
         .input("param_Date", sql.NVarChar(10), date)
         .input("param_DeptId", sql.NVarChar(10), deptId)
         .execute("[dbo].[sp_GetEmployeeAttendance]");
-
+ 
       res.json(result.recordset);
     } catch (error) {
       console.error(
@@ -370,7 +370,7 @@ app.get(
     }
   }
 );
-
+ 
 app.get("/api/get-employee-attendance/", verifyToken, async (req, res) => {
   const { operationId, deptId, empid, date, year, month } = req.query;
   console.log("req.query", req.query);
@@ -387,7 +387,7 @@ app.get("/api/get-employee-attendance/", verifyToken, async (req, res) => {
      
       .execute("[dbo].[sp_GetEmployeeAttendance]");
     res.json(result.recordset);
-    
+   
   } catch (error) {
     console.error(
       "Error fetching employee attendance [dbo].[sp_GetEmployeeAttendance]: ",
@@ -399,18 +399,18 @@ app.get("/api/get-employee-attendance/", verifyToken, async (req, res) => {
 //  API for fetching user roles based on EmployeeEmail
 app.get("/api/userroles", verifyToken, async (req, res) => {
   const EmployeeEmail = req.query.email;
-
+ 
   if (!EmployeeEmail) {
     return res.status(400).json({ error: "Employee email is required" });
   }
-
+ 
   try {
     const pool = await poolPromiseATDB;
     const result = await pool
       .request()
       .input("param_LoggedInUserEmail", sql.NVarChar, EmployeeEmail)
       .execute("[dbo].[sp_GetUserRoles]"); // Updated stored procedure name
-
+ 
     res.json(result.recordset);
   } catch (error) {
     console.error("Error fetching user roles: ", error);
@@ -418,12 +418,12 @@ app.get("/api/userroles", verifyToken, async (req, res) => {
   }
   // return [];
 });
-
+ 
 // API for fetching watchlist details for today based on loginemail and current date
 app.get("/api/watchlist/:email/:date", verifyToken, async (req, res) => {
   const email = req.params.email;
   const date = req.params.date;
-
+ 
   try {
     const pool = await poolPromiseATDB;
     const result = await pool
@@ -431,7 +431,7 @@ app.get("/api/watchlist/:email/:date", verifyToken, async (req, res) => {
       .input("param_LoggedInUserEmail", sql.NVarChar, email)
       .input("param_Date", sql.NVarChar, date)
       .execute("[dbo].[sp_WatchListDetailsForToday]");
-
+ 
     res.json(result.recordset);
   } catch (error) {
     console.error(
@@ -442,25 +442,25 @@ app.get("/api/watchlist/:email/:date", verifyToken, async (req, res) => {
   }
   // return [];
 });
-
+ 
 // API For Fetching the watchlist based on the logged-in users email
 app.get("/api/watchlist/:email", verifyToken, async (req, res) => {
   const email = req.params.email;
-
+ 
   try {
     const pool = await poolPromiseATDB;
     const result = await pool
       .request()
       .input("param_LoggedInUserEmail", sql.NVarChar, email)
       .execute("[dbo].[sp_GetWatchList]");
-
+ 
     res.json(result.recordset);
   } catch (error) {
     console.error("Error fetching watch list [dbo].[sp_GetWatchList]: ", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 // API for deleting a watchlist
 app.delete(
   "/api/watchlist/:email/:watchListId",
@@ -468,7 +468,7 @@ app.delete(
   async (req, res) => {
     const email = req.params.email;
     const watchListId = req.params.watchListId;
-
+ 
     try {
       const pool = await poolPromiseATDB;
       const result = await pool
@@ -476,7 +476,7 @@ app.delete(
         .input("param_LoggedInUserEmail", sql.NVarChar, email)
         .input("param_WatchListID", sql.BigInt, watchListId)
         .execute("[dbo].[sp_DeleteWatchList]");
-
+ 
       res.json({ message: "Watchlist deleted successfully" });
     } catch (error) {
       console.error(
@@ -487,12 +487,12 @@ app.delete(
     }
   }
 );
-
+ 
 // API for getting watchlist by ID
 app.get("/api/watchlistdetails/:email/:id", verifyToken, async (req, res) => {
   const email = req.params.email;
   const watchListId = req.params.id;
-
+ 
   try {
     const pool = await poolPromiseATDB;
     const result = await pool
@@ -500,7 +500,7 @@ app.get("/api/watchlistdetails/:email/:id", verifyToken, async (req, res) => {
       .input("param_LoggedInUserEmail", sql.NVarChar, email)
       .input("param_WatchListID", sql.BigInt, watchListId)
       .execute("[dbo].[sp_GetWatchListByID]");
-
+ 
     res.json(result.recordset);
   } catch (error) {
     console.error(
@@ -510,11 +510,11 @@ app.get("/api/watchlistdetails/:email/:id", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 // Define the PUT endpoint for updating watchlist data
 app.put("/api/watchlist/:watchlistId", verifyToken, async (req, res) => {
   const watchlistId = req.params.watchlistId;
-
+ 
   const {
     param_LoggedInUserEmail,
     param_WatchListName,
@@ -524,23 +524,23 @@ app.put("/api/watchlist/:watchlistId", verifyToken, async (req, res) => {
     param_WatchListPrimaryOwnerEmail,
     param_tvp_WatchListEmployees,
   } = req.body;
-
+ 
   console.log("UPDATE/PUT WatchList", req.body);
   try {
     // Get a connection pool from the database
     const pool = await poolPromiseATDB;
-
+ 
     // Create a new SQL Table-Valued Parameter (TVP) for employees
     const tvp = new sql.Table();
     tvp.columns.add("EmployeeID", sql.Int);
     tvp.columns.add("EmployeeName", sql.NVarChar(255));
     tvp.columns.add("EmployeeEmail", sql.NVarChar(255));
-
+ 
     // Add employee data to the TVP
     param_tvp_WatchListEmployees.forEach((emp) => {
       tvp.rows.add(emp.EmployeeID, emp.EmployeeName, emp.EmployeeEmail);
     });
-
+ 
     // Execute the stored procedure to update the watchlist
     const result = await pool
       .request()
@@ -568,7 +568,7 @@ app.put("/api/watchlist/:watchlistId", verifyToken, async (req, res) => {
       )
       .input("param_tvp_WatchListEmployees", sql.TVP, tvp)
       .execute("[dbo].[sp_UpdateWatchList]");
-
+ 
     // Send a success response
     res.status(200).json({ message: "Watchlist updated successfully" });
   } catch (error) {
@@ -577,7 +577,7 @@ app.put("/api/watchlist/:watchlistId", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 app.post("/api/watchlist/create", verifyToken, async (req, res) => {
   const {
     param_LoggedInUserEmail,
@@ -587,21 +587,21 @@ app.post("/api/watchlist/create", verifyToken, async (req, res) => {
     param_WatchListPrimaryOwnerEmail,
     param_tvp_WatchListEmployees,
   } = req.body;
-
+ 
   console.log("POST - Server received data: ", req.body);
-
+ 
   try {
     const pool = await poolPromiseATDB;
-
+ 
     const tvp = new sql.Table();
     tvp.columns.add("EmployeeID", sql.Int);
     tvp.columns.add("EmployeeName", sql.NVarChar(255));
     tvp.columns.add("EmployeeEmail", sql.NVarChar(255));
-
+ 
     param_tvp_WatchListEmployees.forEach((emp, index) => {
       tvp.rows.add(emp.EmployeeID, emp.EmployeeName, emp.EmployeeEmail); // index + 1, emp.EmpID
     });
-
+ 
     await pool
       .request()
       .input(
@@ -627,27 +627,27 @@ app.post("/api/watchlist/create", verifyToken, async (req, res) => {
       )
       .input("param_tvp_WatchListEmployees", sql.TVP, tvp)
       .execute("[dbo].[sp_CreateWatchList]");
-
+ 
     res.status(200).json({ message: "Watchlist created successfully" });
   } catch (error) {
     console.error("Error creating watchlist: ", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 // 1) GET Dept‑SubDept mapping
 app.get("/api/deptsubdeptmapping", async (req, res) => {
   try {
     const pool = await poolPromiseATDB;
     const result = await pool.request().execute("sp_GetDeptSubDeptMapping");
-
+ 
     res.status(200).json(result.recordset);
   } catch (err) {
     console.error("Error fetching dept‑subdept mapping:", err);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 // // 2) GET all employees (with optional dept/sub filters)
 // app.get('/api/employeereport', async (req, res) => {
 //   const { deptid, subdeptid } = req.query;
@@ -655,31 +655,31 @@ app.get("/api/deptsubdeptmapping", async (req, res) => {
 //     const pool = await poolPromiseATDB;
 //     const result = await pool.request()
 //       .execute('usp_GetAllEmployeeStatus');
-
+ 
 //     let rows = result.recordset;
 //     if (deptid)    rows = rows.filter(r => r.Deptid === parseInt(deptid));
 //     if (subdeptid) rows = rows.filter(r => r.Subdeptid === parseInt(subdeptid));
-
+ 
 //     res.status(200).json(rows);
 //   } catch (err) {
 //     console.error('Error fetching employee list:', err);
 //     res.status(500).json({ error: 'Internal Server Error' });
 //   }
 // });
-
+ 
 app.get("/api/employeereport", async (req, res) => {
   const { deptid, subdeptid } = req.query;
   try {
     const pool = await poolPromiseATDB;
     const request = pool.request();
-
+ 
     if (deptid && !isNaN(parseInt(deptid))) {
       request.input("deptid", sql.Int, parseInt(deptid));
     }
     if (subdeptid) {
       request.input("subdeptid", sql.VarChar(50), subdeptid);
     }
-
+ 
     const result = await request.execute("usp_GetAllEmployeeStatus");
     res.status(200).json(result.recordset);
   } catch (err) {
@@ -687,14 +687,14 @@ app.get("/api/employeereport", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 // 3) POST update employee report
 app.post("/api/employeereport/:empid/report", async (req, res) => {
   const { empid } = req.params;
   const { report } = req.body;
   if (!report)
     return res.status(400).json({ error: "Report content is required" });
-
+ 
   try {
     const pool = await poolPromiseATDB;
     const result = await pool
@@ -702,7 +702,7 @@ app.post("/api/employeereport/:empid/report", async (req, res) => {
       .input("Empid", sql.NVarChar(15), empid)
       .input("Report", sql.NVarChar(sql.MAX), report)
       .execute("sp_UpdateEmployeeReport");
-
+ 
     // return updated row
     if (result.recordset.length > 0) {
       res.status(200).json(result.recordset[0]);
@@ -714,11 +714,11 @@ app.post("/api/employeereport/:empid/report", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 // app.get('*', (req, res) => {
 //   res.sendFile(path.join(__dirname, '../ReactUIApp/build', 'index.html'));
 // });
-
+ 
 /** 1️⃣ Get Dept/Sub‑Dept list */
 app.get("/api/deptsubdept", verifyToken, async (req, res) => {
   try {
@@ -730,7 +730,7 @@ app.get("/api/deptsubdept", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 /** 2️⃣ Search employees by name */
 app.get("/api/employeedpt", verifyToken, async (req, res) => {
   const search = req.query.search || "";
@@ -746,26 +746,26 @@ app.get("/api/employeedpt", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 /** 3️⃣ Insert new Dept‑Manager mapping */
 app.post("/api/deptmanager", verifyToken, async (req, res) => {
   const { DeptId, DeptName, SubDeptId, SubDeptName, ManagerId, ManagerEmail } =
     req.body;
-
+ 
   if (!DeptId || !DeptName || !SubDeptId || !ManagerId || !ManagerEmail) {
     return res.status(400).json({ error: "Missing required fields" });
   }
-
+ 
   try {
     const pool = await poolPromiseATDB; // Corrected pool reference
-
+ 
     const existingMapping = await pool
       .request()
       .input("DeptId", sql.NVarChar(50), DeptId)
       .input("SubDeptId", sql.NVarChar(50), SubDeptId)
       .input("ManagerId", sql.NVarChar(50), ManagerId)
       .execute("sp_CheckDeptManagerMapping"); // Stored procedure to check existing mapping
-
+ 
     if (existingMapping.recordset.length > 0) {
       return res
         .status(400)
@@ -789,7 +789,7 @@ app.post("/api/deptmanager", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 /** 4️⃣ Read all mappings */
 app.get("/api/deptmanager", verifyToken, async (req, res) => {
   try {
@@ -801,7 +801,7 @@ app.get("/api/deptmanager", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 /** 5️⃣ Update mapping */
 app.put(
   "/api/deptmanager/:deptId/:subDeptId/:oldManagerId",
@@ -809,7 +809,7 @@ app.put(
   async (req, res) => {
     const { deptId, subDeptId, oldManagerId } = req.params;
     const { ManagerId: newManagerId, ManagerEmail } = req.body;
-
+ 
     try {
       const pool = await poolPromiseATDB; // Ensure poolPromiseATDB is used
       await pool
@@ -820,7 +820,7 @@ app.put(
         .input("NewManagerId", sql.NVarChar(50), newManagerId)
         .input("ManagerEmail", sql.NVarChar(100), ManagerEmail)
         .execute("sp_UpdateDeptManagerMapping");
-
+ 
       res.status(200).json({ message: "Mapping updated successfully." });
     } catch (err) {
       console.error("Error updating Dept-Manager mapping:", err.message);
@@ -828,14 +828,14 @@ app.put(
     }
   }
 );
-
+ 
 /** 6️⃣ Delete mapping */
 app.delete(
   "/api/deptmanager/:deptId/:subDeptId/:managerId",
   verifyToken,
   async (req, res) => {
     const { deptId, subDeptId, managerId } = req.params;
-
+ 
     try {
       const pool = await poolPromiseATDB; // Corrected pool reference
       await pool
@@ -851,7 +851,9 @@ app.delete(
     }
   }
 );
-
+ 
 app.listen(PORT, () => {
   console.log(`Attendance Tracker Server is running on port: ${PORT}`);
 });
+ 
+ 
