@@ -48,7 +48,7 @@ app.post("/api/get-last-sync-date", verifyToken, async (req, res) => {
   }
 });
  
-app.post("/api/integration-daily-swipe-data", async (req, res) => {
+app.post("/api/integration-daily-swipe-data", verifyToken, async (req, res) => {
   //const swipejson = req.query.swipejson;
   const swipejson = req.body;
   const jsonString = JSON.stringify(swipejson);
@@ -70,7 +70,7 @@ app.post("/api/integration-daily-swipe-data", async (req, res) => {
   }
 });
  
-app.post("/api/integration-employee-data", async (req, res) => {
+app.post("/api/integration-employee-data", verifyToken, async (req, res) => {
   const employeejson = req.body;
   const jsonString = JSON.stringify(employeejson);
   try {
@@ -91,7 +91,7 @@ app.post("/api/integration-employee-data", async (req, res) => {
 });
  
 // integrate - department-data
-app.post("/api/integration-department-data", async (req, res) => {
+app.post("/api/integration-department-data", verifyToken, async (req, res) => {
   const deparmentjson = req.body;
   const jsonString = JSON.stringify(deparmentjson);
   try {
@@ -112,7 +112,7 @@ app.post("/api/integration-department-data", async (req, res) => {
 });
  
 // integrate - gate-data
-app.post("/api/integration-Gate-data", async (req, res) => {
+app.post("/api/integration-Gate-data", verifyToken, async (req, res) => {
   const gatejson = req.body;
   const jsonString = JSON.stringify(gatejson);
   try {
