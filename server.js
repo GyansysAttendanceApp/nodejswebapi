@@ -31,7 +31,7 @@ app.post("/api/get-token", getToken);
 //Integration Start
 // below is for suggestion api (using Stored Procedure)
  
-app.post("/api/get-last-sync-date", verifyToken, async (req, res) => {
+app.post("/api/get-last-sync-date",verifyToken,  async (req, res) => {
   // const swipejson = req.body;
   // const jsonString = JSON.stringify(swipejson);
   try {
@@ -129,6 +129,195 @@ app.post("/api/integration-Gate-data", verifyToken, async (req, res) => {
       error
     );
     res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+//Integrate missing transtable data 
+// app.post("/api/integrate-missing-trans", async (req, res) => {
+//   const { transactions } = req.body;
+
+//   try {
+//     const pool = await poolPromiseATDB;
+
+//     // Create TVP definition
+//     const tvp = new sql.Table("dbo.TVP_TransTable"); // TVP type name
+//     tvp.columns.add("CID", sql.VarChar(50));
+//     tvp.columns.add("GtNo", sql.VarChar(50));
+//     tvp.columns.add("EmpID", sql.VarChar(50));
+//     tvp.columns.add("CardID", sql.VarChar(50));
+//     tvp.columns.add("dt", sql.DateTime);
+//     tvp.columns.add("InOut", sql.VarChar(10));
+//     tvp.columns.add("ErrDesc", sql.VarChar(255));
+//     tvp.columns.add("loccode", sql.VarChar(50));
+//     tvp.columns.add("downloccode", sql.VarChar(50));
+//     tvp.columns.add("status", sql.VarChar(50));
+//     tvp.columns.add("Tid", sql.VarChar(50));
+//     tvp.columns.add("sitecode", sql.VarChar(50));
+//     tvp.columns.add("deptid", sql.VarChar(50));
+//     tvp.columns.add("type", sql.VarChar(50));
+//     tvp.columns.add("updatedon", sql.DateTime);
+//     tvp.columns.add("empname", sql.VarChar(255));
+//     tvp.columns.add("location", sql.VarChar(255));
+//     tvp.columns.add("VFlag", sql.VarChar(10));
+
+//     // Add data to TVP
+//     transactions.forEach(tx => {
+//       tvp.rows.add(
+//         tx.CID,
+//         tx.GtNo,
+//         tx.EmpID,
+//         tx.CardID,
+//         tx.dt,
+//         tx.InOut,
+//         tx.ErrDesc,
+//         tx.loccode,
+//         tx.downloccode,
+//         tx.status,
+//         tx.Tid,
+//         tx.sitecode,
+//         tx.deptid,
+//         tx.type,
+//         tx.updatedon,
+//         tx.empname,
+//         tx.location,
+//         tx.VFlag
+//       );
+//     });
+
+//     // Call the stored procedure
+//     await pool.request()
+//       .input("TVP", tvp)
+//       .execute("dbo.sp_IntegrateMissingTransData");
+
+//     res.status(200).json({ message: "Missing transaction data integrated successfully." });
+
+//   } catch (error) {
+//     console.error("Error integrating missing transactions:", error);
+//     res.status(500).json({ error: "Failed to integrate missing transactions." });
+//   }
+// });
+app.post("/api/integrate-missing-trans",verifyToken,  async (req, res) => {
+  // 1) The client should send a bare array of transaction objects:
+  //    [ { CID: "001", GtNo: "01", ..., location: null, ... }, {...}, ... ]
+  //
+  //    If you ever wrap it as { transactions: [...] }, this line still handles it.
+  const incoming = Array.isArray(req.body) ? req.body : req.body.transactions;
+  if (!Array.isArray(incoming)) {
+    return res
+      .status(400)
+      .json({ error: "Expected a JSON array of transaction objects." });
+  }
+
+  try {
+    const pool = await poolPromiseATDB;
+
+    // 2) Build the TVP columns in the exact same order & types as dbo.TVP_TransTable in SQL:
+    const tvp = new sql.Table("dbo.TVP_TransTable");
+    tvp.columns.add("CID",         sql.VarChar(50));
+    tvp.columns.add("GtNo",        sql.VarChar(50));
+    tvp.columns.add("EmpID",       sql.VarChar(50));
+    tvp.columns.add("CardID",      sql.VarChar(50));
+    tvp.columns.add("dt",          sql.DateTime);
+    tvp.columns.add("InOut",       sql.VarChar(10));
+    tvp.columns.add("ErrDesc",     sql.VarChar(255));
+    tvp.columns.add("loccode",     sql.VarChar(50));
+    tvp.columns.add("downloccode", sql.VarChar(50));
+    tvp.columns.add("status",      sql.VarChar(50));
+    tvp.columns.add("Tid",         sql.BigInt);
+    tvp.columns.add("sitecode",    sql.VarChar(50));
+    tvp.columns.add("deptid",      sql.VarChar(50));
+    tvp.columns.add("type",        sql.VarChar(50));
+    tvp.columns.add("updatedon",   sql.DateTime);
+    tvp.columns.add("empname",     sql.VarChar(255));
+    tvp.columns.add("location",    sql.VarChar(255));
+    tvp.columns.add("VFlag",       sql.VarChar(10));
+
+    // 3) Coerce each property into the correct JS type before adding to TVP:
+    incoming.forEach(tx => {
+      // Strings or null for VARCHAR columns:
+      const CIDVal       = tx.CID       != null ? String(tx.CID)       : null;
+      const GtNoVal      = tx.GtNo      != null ? String(tx.GtNo)      : null;
+      const EmpIDVal     = tx.EmpID     != null ? String(tx.EmpID)     : null;
+      const CardIDVal    = tx.CardID    != null ? String(tx.CardID)    : null;
+      const dtVal        = tx.dt        ? new Date(tx.dt.replace("T", " "))        : null;
+      const InOutVal     = tx.InOut     != null ? String(tx.InOut)     : null;
+      const ErrDescVal   = tx.ErrDesc   != null ? String(tx.ErrDesc)   : null;
+      const loccodeVal   = tx.loccode   != null ? String(tx.loccode)   : null;
+      const downlocVal   = tx.downloccode != null ? String(tx.downloccode) : null;
+      const statusVal    = tx.status    != null ? String(tx.status)    : null;
+
+      // Number or null for BIGINT column:
+      const TidVal       = tx.Tid       != null ? Number(tx.Tid)       : null;
+
+      const sitecodeVal  = tx.sitecode  != null ? String(tx.sitecode)  : null;
+      const deptidVal    = tx.deptid    != null ? String(tx.deptid)    : null;
+      const typeVal      = tx.type      != null ? String(tx.type)      : null;
+      const updatedonVal = tx.updatedon ? new Date(tx.updatedon.replace("T", " "))   : null;
+      const empnameVal   = tx.empname   != null ? String(tx.empname)   : null;
+
+      // location is now either null or a string.
+      // If your C# side sent location=null, tx.location === null here => locationVal stays null.
+      const locationVal = tx.location != null ? String(tx.location) : null;
+
+      const VFlagVal     = tx.VFlag     != null ? String(tx.VFlag)     : null;
+
+      // 4) Add the row into the TVP in exactly the same column order as above:
+      tvp.rows.add(
+        CIDVal,        // CID (VARCHAR(50))
+        GtNoVal,       // GtNo (VARCHAR(50))
+        EmpIDVal,      // EmpID (VARCHAR(50))
+        CardIDVal,     // CardID (VARCHAR(50))
+        dtVal,         // dt (DATETIME)
+        InOutVal,      // InOut (VARCHAR(10))
+        ErrDescVal,    // ErrDesc (VARCHAR(255))
+        loccodeVal,    // loccode (VARCHAR(50))
+        downlocVal,    // downloccode (VARCHAR(50))
+        statusVal,     // status (VARCHAR(50))
+        TidVal,        // Tid (BIGINT)
+        sitecodeVal,   // sitecode (VARCHAR(50))
+        deptidVal,     // deptid (VARCHAR(50))
+        typeVal,       // type (VARCHAR(50))
+        updatedonVal,  // updatedon (DATETIME)
+        empnameVal,    // empname (VARCHAR(255))
+        locationVal,   // location (VARCHAR(255)) now null or string
+        VFlagVal       // VFlag (VARCHAR(10))
+      );
+    });
+
+    // 5) Execute the stored procedure that inserts from @TVP into NetXs_Trans
+    await pool
+      .request()
+      .input("TVP", tvp)  // matches: @TVP dbo.TVP_TransTable READONLY
+      .execute("dbo.sp_IntegrateMissingTransData");
+
+    return res
+      .status(200)
+      .json({ message: "Missing transaction data integrated successfully." });
+  }
+  catch (error) {
+    console.error("Error integrating missing transactions:", error);
+    return res
+      .status(500)
+      .json({ error: "Failed to integrate missing transactions." });
+  }
+});
+
+
+
+// GET: Fetch all non-null TIDs from NetXs_Trans
+app.get('/api/gettranstid-list',verifyToken,  async (req, res) => {
+  try {
+    const pool = await poolPromiseATDB;
+
+    const result = await pool.request()
+    .query(`SELECT Tid FROM dbo.NetXs_Trans WHERE Tid IS NOT NULL and dt>'2025-05-01'`);
+
+    // Respond with array of { Tid: value }
+    res.status(200).json(result.recordset);
+
+  } catch (error) {
+    console.error("Error fetching TIDs:", error);
+    res.status(500).json({ message: "Failed to retrieve TID list." });
   }
 });
  
@@ -231,7 +420,25 @@ app.get("/api/dept", verifyToken, async (req, res) => {
     });
   // return [];
 });
- 
+// // Api for ranged attendance History of Employeee (based on EmpID, startdate enddate)
+// server/routes/attendanceRoutes.js
+app.get('/api/attendance/range', verifyToken, async (req, res) => {
+  const { empid, start, end } = req.query;
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool
+      .request()
+      .input('param_EmpID', sql.NVarChar(15), empid)
+      .input('param_StartDate', sql.Date, start)
+      .input('param_EndDate', sql.Date, end)
+      .execute('sp_GetAttendanceHistoryRange'); // <-- you write this stored proc
+    res.json(result.recordset);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // // API for Daily Attendance History of Employeee (based on EmpID, Year, Month)
 app.get(
   "/api/attendance/:empId/:year/:month",
@@ -284,7 +491,7 @@ app.get(
       console.log('executed',result.recordset);
     } catch (error) {
       console.error(
-        "Error fetching employee attendance [dbo].[sp_GetEmployeeAttendance]: ",
+        "Error fetching employee attendance [dbo].[sp_GetEmployeeAttendance_new]: ",
         error
       );
       res.status(500).json({ error: "Internal Server Error" });
@@ -292,6 +499,39 @@ app.get(
   }
 );
  
+
+app.get(
+  "/api/get-employee-absent/:operationId/:date/:deptId/:subdeptId",
+  verifyToken,
+  async (req, res) => {
+    const operationId = req.params.operationId;
+    const date = req.params.date;
+    const deptId = req.params.deptId;
+    const subDeptId = req.params.subdeptId || null;
+ 
+    try {
+      const pool = await poolPromiseATDB;
+      const result = await pool
+        .request()
+        .input("param_OperationId", sql.NVarChar(2), operationId)
+        .input("param_Date", sql.NVarChar(10), date)
+        .input("param_DeptId", sql.NVarChar(10), deptId)
+        .input("param_SubDeptID", sql.NVarChar(10), subDeptId)
+        .execute("[dbo].[sp_GetEmployeeAbsentees_NEW]");
+       
+      res.json(result.recordset);
+      console.log('executed',result.recordset);
+    } catch (error) {
+      console.error(
+        "Error fetching employee attendance [dbo].[sp_GetEmployeeAbsentees_NEW]: ",
+        error
+      );
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+
+
 app.put("/api/update-expected-count", verifyToken, async (req, res) => {
   const { deptId, subDeptId, newExpectedCount } = req.body;
  
@@ -341,7 +581,32 @@ app.get("/api/monthly-attendance", verifyToken, async (req, res) => {
   }
 });
  
- 
+//monthly report
+app.get("/api/Monthly-attendance-batch", verifyToken, async (req, res) => {
+  const { operationId, deptId, subDeptId, fromDate, toDate } = req.query;
+
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool
+      .request()
+      .input("param_OperationId", sql.NVarChar(2), operationId)
+      .input("param_DeptId", sql.NVarChar(10), deptId)
+      .input("param_SubDeptID", sql.NVarChar(10), subDeptId || null)
+      .input("param_FromDate", sql.Date, fromDate)
+      .input("param_ToDate", sql.Date, toDate)
+      .execute("[dbo].[sp_GetDeptAttHistory_range]");
+
+    res.status(200).json(result.recordset);
+    console.log("Executed successfully:", result.recordset);
+  } catch (error) {
+    console.error(
+      "Error executing [dbo].[sp_GetEmployeeAttendance_NEW]: ",
+      error
+    );
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 // API for Daily deptwise  Attendance History of Employeee (based on EmpID, Year, Month)
 app.get(
   "/api/get-employee-attendance/:operationId/:date/:deptId/",
@@ -532,13 +797,21 @@ app.put("/api/watchlist/:watchlistId", verifyToken, async (req, res) => {
  
     // Create a new SQL Table-Valued Parameter (TVP) for employees
     const tvp = new sql.Table();
-    tvp.columns.add("EmployeeID", sql.Int);
+    tvp.columns.add("EmployeeID", sql.VarChar(10));
     tvp.columns.add("EmployeeName", sql.NVarChar(255));
     tvp.columns.add("EmployeeEmail", sql.NVarChar(255));
+    tvp.columns.add("StartDate", sql.Date); // Optional: Add EmployeeStatus if needed
+    tvp.columns.add("EndDate", sql.Date); // Optional: Add EmployeeRole if needed
  
     // Add employee data to the TVP
     param_tvp_WatchListEmployees.forEach((emp) => {
-      tvp.rows.add(emp.EmployeeID, emp.EmployeeName, emp.EmployeeEmail);
+      tvp.rows.add(
+        emp.EmployeeID,
+        emp.EmployeeName,
+        emp.EmployeeEmail,
+        emp.StartDate,
+        emp.EndDate
+      );
     });
  
     // Execute the stored procedure to update the watchlist
@@ -594,12 +867,20 @@ app.post("/api/watchlist/create", verifyToken, async (req, res) => {
     const pool = await poolPromiseATDB;
  
     const tvp = new sql.Table();
-    tvp.columns.add("EmployeeID", sql.Int);
+    tvp.columns.add("EmployeeID", sql.VarChar(10));
     tvp.columns.add("EmployeeName", sql.NVarChar(255));
     tvp.columns.add("EmployeeEmail", sql.NVarChar(255));
+    tvp.columns.add("StartDate", sql.Date); // Optional: Add EmployeeStatus if needed
+    tvp.columns.add("EndDate", sql.Date); 
  
     param_tvp_WatchListEmployees.forEach((emp, index) => {
-      tvp.rows.add(emp.EmployeeID, emp.EmployeeName, emp.EmployeeEmail); // index + 1, emp.EmpID
+     tvp.rows.add(
+    emp.EmployeeID,
+    emp.EmployeeName,
+    emp.EmployeeEmail,
+    emp.StartDate,
+    emp.EndDate
+  ); // index + 1, emp.EmpID
     });
  
     await pool
