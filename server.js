@@ -30,7 +30,23 @@ app.post("/api/get-token", getToken);
 // app.use(express.static(path.join(__dirname, 'ReactUIApp/build')));
 //Integration Start
 // below is for suggestion api (using Stored Procedure)
- 
+app.get("/api/lastsyncdate", async (req, res) => {
+  // const swipejson = req.body;
+  // const jsonString = JSON.stringify(swipejson);
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool.request().execute("sp_GetLastSyncDateWithNetxs");
+    console.log("ress", result.recordset.LastCloudSyncDate);
+    res.json(result.recordset[0].LastCloudSyncDate);
+  } catch (error) {
+    console.error(
+      "Error getting integration last sync date to sp_GetLastSyncDateWithNetxs: ",
+      error
+    );
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 app.post("/api/get-last-sync-date",verifyToken,  async (req, res) => {
   // const swipejson = req.body;
   // const jsonString = JSON.stringify(swipejson);
