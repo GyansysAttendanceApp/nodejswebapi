@@ -148,71 +148,7 @@ app.post("/api/integration-Gate-data", verifyToken, async (req, res) => {
   }
 });
 
-//Integrate missing transtable data 
-// app.post("/api/integrate-missing-trans", async (req, res) => {
-//   const { transactions } = req.body;
-
-//   try {
-//     const pool = await poolPromiseATDB;
-
-//     // Create TVP definition
-//     const tvp = new sql.Table("dbo.TVP_TransTable"); // TVP type name
-//     tvp.columns.add("CID", sql.VarChar(50));
-//     tvp.columns.add("GtNo", sql.VarChar(50));
-//     tvp.columns.add("EmpID", sql.VarChar(50));
-//     tvp.columns.add("CardID", sql.VarChar(50));
-//     tvp.columns.add("dt", sql.DateTime);
-//     tvp.columns.add("InOut", sql.VarChar(10));
-//     tvp.columns.add("ErrDesc", sql.VarChar(255));
-//     tvp.columns.add("loccode", sql.VarChar(50));
-//     tvp.columns.add("downloccode", sql.VarChar(50));
-//     tvp.columns.add("status", sql.VarChar(50));
-//     tvp.columns.add("Tid", sql.VarChar(50));
-//     tvp.columns.add("sitecode", sql.VarChar(50));
-//     tvp.columns.add("deptid", sql.VarChar(50));
-//     tvp.columns.add("type", sql.VarChar(50));
-//     tvp.columns.add("updatedon", sql.DateTime);
-//     tvp.columns.add("empname", sql.VarChar(255));
-//     tvp.columns.add("location", sql.VarChar(255));
-//     tvp.columns.add("VFlag", sql.VarChar(10));
-
-//     // Add data to TVP
-//     transactions.forEach(tx => {
-//       tvp.rows.add(
-//         tx.CID,
-//         tx.GtNo,
-//         tx.EmpID,
-//         tx.CardID,
-//         tx.dt,
-//         tx.InOut,
-//         tx.ErrDesc,
-//         tx.loccode,
-//         tx.downloccode,
-//         tx.status,
-//         tx.Tid,
-//         tx.sitecode,
-//         tx.deptid,
-//         tx.type,
-//         tx.updatedon,
-//         tx.empname,
-//         tx.location,
-//         tx.VFlag
-//       );
-//     });
-
-//     // Call the stored procedure
-//     await pool.request()
-//       .input("TVP", tvp)
-//       .execute("dbo.sp_IntegrateMissingTransData");
-
-//     res.status(200).json({ message: "Missing transaction data integrated successfully." });
-
-//   } catch (error) {
-//     console.error("Error integrating missing transactions:", error);
-//     res.status(500).json({ error: "Failed to integrate missing transactions." });
-//   }
-// });
-app.post("/api/integrate-missing-trans",verifyToken,  async (req, res) => {
+app.post("/api/integrate-missing-trans", async (req, res) => {
   // 1) The client should send a bare array of transaction objects:
   //    [ { CID: "001", GtNo: "01", ..., location: null, ... }, {...}, ... ]
   //
@@ -233,7 +169,7 @@ app.post("/api/integrate-missing-trans",verifyToken,  async (req, res) => {
     tvp.columns.add("GtNo",        sql.VarChar(50));
     tvp.columns.add("EmpID",       sql.VarChar(50));
     tvp.columns.add("CardID",      sql.VarChar(50));
-    tvp.columns.add("dt",          sql.DateTime);
+    tvp.columns.add("dt",          sql.VarChar(23));
     tvp.columns.add("InOut",       sql.VarChar(10));
     tvp.columns.add("ErrDesc",     sql.VarChar(255));
     tvp.columns.add("loccode",     sql.VarChar(50));
@@ -243,7 +179,7 @@ app.post("/api/integrate-missing-trans",verifyToken,  async (req, res) => {
     tvp.columns.add("sitecode",    sql.VarChar(50));
     tvp.columns.add("deptid",      sql.VarChar(50));
     tvp.columns.add("type",        sql.VarChar(50));
-    tvp.columns.add("updatedon",   sql.DateTime);
+    tvp.columns.add("updatedon",   sql.VarChar(23)); // Use VarChar(23) for DATETIME2 precision
     tvp.columns.add("empname",     sql.VarChar(255));
     tvp.columns.add("location",    sql.VarChar(255));
     tvp.columns.add("VFlag",       sql.VarChar(10));
@@ -255,7 +191,7 @@ app.post("/api/integrate-missing-trans",verifyToken,  async (req, res) => {
       const GtNoVal      = tx.GtNo      != null ? String(tx.GtNo)      : null;
       const EmpIDVal     = tx.EmpID     != null ? String(tx.EmpID)     : null;
       const CardIDVal    = tx.CardID    != null ? String(tx.CardID)    : null;
-      const dtVal        = tx.dt        ? new Date(tx.dt.replace("T", " "))        : null;
+      const dtVal        = tx.dt        ? tx.dt       : null;
       const InOutVal     = tx.InOut     != null ? String(tx.InOut)     : null;
       const ErrDescVal   = tx.ErrDesc   != null ? String(tx.ErrDesc)   : null;
       const loccodeVal   = tx.loccode   != null ? String(tx.loccode)   : null;
@@ -268,7 +204,7 @@ app.post("/api/integrate-missing-trans",verifyToken,  async (req, res) => {
       const sitecodeVal  = tx.sitecode  != null ? String(tx.sitecode)  : null;
       const deptidVal    = tx.deptid    != null ? String(tx.deptid)    : null;
       const typeVal      = tx.type      != null ? String(tx.type)      : null;
-      const updatedonVal = tx.updatedon ? new Date(tx.updatedon.replace("T", " "))   : null;
+      const updatedonVal = tx.updatedon ? tx.updatedon  : null;
       const empnameVal   = tx.empname   != null ? String(tx.empname)   : null;
 
       // location is now either null or a string.
@@ -304,8 +240,8 @@ app.post("/api/integrate-missing-trans",verifyToken,  async (req, res) => {
     await pool
       .request()
       .input("TVP", tvp)  // matches: @TVP dbo.TVP_TransTable READONLY
-      .execute("dbo.sp_IntegrateMissingTransData");
-
+      .execute("sp_IntegrateMissingTransData");
+    console.log('triggered')
     return res
       .status(200)
       .json({ message: "Missing transaction data integrated successfully." });
@@ -320,23 +256,54 @@ app.post("/api/integrate-missing-trans",verifyToken,  async (req, res) => {
 
 
 
-// GET: Fetch all non-null TIDs from NetXs_Trans
-app.get('/api/gettranstid-list',verifyToken,  async (req, res) => {
+
+
+app.get("/api/gettranstid-list", async (req, res) => {
   try {
+    // 1) Read startDate and endDate from the query string,
+    //    in “YYYY-MM-DD” format. E.g. /api/gettranstid-list?startDate=2025-05-21&endDate=2025-05-26
+    const startDateParam = req.query.startDate;  // e.g. "2025-05-21"
+    const endDateParam   = req.query.endDate;    // e.g. "2025-05-26"
+
+    if (!startDateParam || !endDateParam) {
+      return res
+        .status(400)
+        .json({ message: "You must supply both ?startDate=YYYY-MM-DD & ?endDate=YYYY-MM-DD" });
+    }
+
+    // 2) Build plain “YYYY-MM-DD HH:mm:ss” strings—no toISOString, no UTC conversion.
+    //    We want “start of day” at 00:00:00 and “end of day” at 23:59:59 (or 23:59:59.997 if you like).
+    const startDateTimeStr = `${startDateParam} 00:00:00`;
+    const endDateTimeStr   = `${endDateParam} 23:59:59`;
+
+    // 3) Query SQL Server. We pass the plain string as sql.DateTime (or DateTime2).
     const pool = await poolPromiseATDB;
+    const result = await pool
+      .request()
+      // Notice: we explicitly say “sql.DateTime” here, but we hand it a string like “2025-05-21 00:00:00”.
+      // SQL Server will interpret that as a “local” datetime (no timezone adjustment).
+      .input("startDate", sql.VarChar(23), startDateTimeStr)
+      .input("endDate",   sql.VarChar(23), endDateTimeStr)
+      .query(`
+        SELECT 
+          Tid,
+          -- Return dt exactly as stored in the database (no CONVERT to dd-MM-yyyy, etc.)
+          dt 
+        FROM dbo.NetXs_Trans
+        WHERE dt >= @startDate 
+          AND dt <= @endDate
+      `);
 
-    const result = await pool.request()
-    .query(`SELECT Tid FROM dbo.NetXs_Trans WHERE Tid IS NOT NULL and dt>'2025-05-01'`);
-
-    // Respond with array of { Tid: value }
-    res.status(200).json(result.recordset);
-
-  } catch (error) {
-    console.error("Error fetching TIDs:", error);
-    res.status(500).json({ message: "Failed to retrieve TID list." });
+    // 4) Send back a JSON array of { Tid: <long>, dt: <Date> }.
+    //    Express (and mssql) will automatically serialize “dt” as a JS Date.
+    //    If you want “dd-MM-yyyy HH:mm:ss” on the client, you can convert later.
+    return res.status(200).json(result.recordset);
+  } catch (err) {
+    console.error("Error in /api/gettranstid-list:", err);
+    return res.status(500).json({ message: "Failed to retrieve TID list." });
   }
 });
- 
+
 //Integration End
  
 // below is for suggestion api (using Stored Procedure)
