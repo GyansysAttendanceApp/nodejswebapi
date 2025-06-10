@@ -148,7 +148,7 @@ app.post("/api/integration-Gate-data", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/api/integrate-missing-trans", async (req, res) => {
+app.post("/api/integrate-missing-trans",verifyToken, async (req, res) => {
   // 1) The client should send a bare array of transaction objects:
   //    [ { CID: "001", GtNo: "01", ..., location: null, ... }, {...}, ... ]
   //
@@ -258,7 +258,7 @@ app.post("/api/integrate-missing-trans", async (req, res) => {
 
 
 
-app.get("/api/gettranstid-list", async (req, res) => {
+app.get("/api/gettranstid-list",verifyToken, async (req, res) => {
   try {
     // 1) Read startDate and endDate from the query string,
     //    in “YYYY-MM-DD” format. E.g. /api/gettranstid-list?startDate=2025-05-21&endDate=2025-05-26
