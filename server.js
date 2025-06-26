@@ -46,7 +46,7 @@ app.get("/api/lastsyncdate", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 app.post("/api/get-last-sync-date",verifyToken,  async (req, res) => {
   // const swipejson = req.body;
   // const jsonString = JSON.stringify(swipejson);
@@ -147,8 +147,8 @@ app.post("/api/integration-Gate-data", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-app.post("/api/integrate-missing-trans",verifyToken, async (req, res) => {
+ 
+app.post("/api/integrate-missing-trans", verifyToken,async (req, res) => {
   // 1) The client should send a bare array of transaction objects:
   //    [ { CID: "001", GtNo: "01", ..., location: null, ... }, {...}, ... ]
   //
@@ -159,10 +159,10 @@ app.post("/api/integrate-missing-trans",verifyToken, async (req, res) => {
       .status(400)
       .json({ error: "Expected a JSON array of transaction objects." });
   }
-
+ 
   try {
     const pool = await poolPromiseATDB;
-
+ 
     // 2) Build the TVP columns in the exact same order & types as dbo.TVP_TransTable in SQL:
     const tvp = new sql.Table("dbo.TVP_TransTable");
     tvp.columns.add("CID",         sql.VarChar(50));
@@ -183,7 +183,7 @@ app.post("/api/integrate-missing-trans",verifyToken, async (req, res) => {
     tvp.columns.add("empname",     sql.VarChar(255));
     tvp.columns.add("location",    sql.VarChar(255));
     tvp.columns.add("VFlag",       sql.VarChar(10));
-
+ 
     // 3) Coerce each property into the correct JS type before adding to TVP:
     incoming.forEach(tx => {
       // Strings or null for VARCHAR columns:
@@ -197,22 +197,22 @@ app.post("/api/integrate-missing-trans",verifyToken, async (req, res) => {
       const loccodeVal   = tx.loccode   != null ? String(tx.loccode)   : null;
       const downlocVal   = tx.downloccode != null ? String(tx.downloccode) : null;
       const statusVal    = tx.status    != null ? String(tx.status)    : null;
-
+ 
       // Number or null for BIGINT column:
       const TidVal       = tx.Tid       != null ? Number(tx.Tid)       : null;
-
+ 
       const sitecodeVal  = tx.sitecode  != null ? String(tx.sitecode)  : null;
       const deptidVal    = tx.deptid    != null ? String(tx.deptid)    : null;
       const typeVal      = tx.type      != null ? String(tx.type)      : null;
       const updatedonVal = tx.updatedon ? tx.updatedon  : null;
       const empnameVal   = tx.empname   != null ? String(tx.empname)   : null;
-
+ 
       // location is now either null or a string.
       // If your C# side sent location=null, tx.location === null here => locationVal stays null.
       const locationVal = tx.location != null ? String(tx.location) : null;
-
+ 
       const VFlagVal     = tx.VFlag     != null ? String(tx.VFlag)     : null;
-
+ 
       // 4) Add the row into the TVP in exactly the same column order as above:
       tvp.rows.add(
         CIDVal,        // CID (VARCHAR(50))
@@ -235,7 +235,7 @@ app.post("/api/integrate-missing-trans",verifyToken, async (req, res) => {
         VFlagVal       // VFlag (VARCHAR(10))
       );
     });
-
+ 
     // 5) Execute the stored procedure that inserts from @TVP into NetXs_Trans
     await pool
       .request()
@@ -253,29 +253,29 @@ app.post("/api/integrate-missing-trans",verifyToken, async (req, res) => {
       .json({ error: "Failed to integrate missing transactions." });
   }
 });
-
-
-
-
-
-app.get("/api/gettranstid-list",verifyToken, async (req, res) => {
+ 
+ 
+ 
+ 
+ 
+app.get("/api/gettranstid-list", verifyToken,async (req, res) => {
   try {
     // 1) Read startDate and endDate from the query string,
     //    in “YYYY-MM-DD” format. E.g. /api/gettranstid-list?startDate=2025-05-21&endDate=2025-05-26
     const startDateParam = req.query.startDate;  // e.g. "2025-05-21"
     const endDateParam   = req.query.endDate;    // e.g. "2025-05-26"
-
+ 
     if (!startDateParam || !endDateParam) {
       return res
         .status(400)
         .json({ message: "You must supply both ?startDate=YYYY-MM-DD & ?endDate=YYYY-MM-DD" });
     }
-
+ 
     // 2) Build plain “YYYY-MM-DD HH:mm:ss” strings—no toISOString, no UTC conversion.
     //    We want “start of day” at 00:00:00 and “end of day” at 23:59:59 (or 23:59:59.997 if you like).
     const startDateTimeStr = `${startDateParam} 00:00:00`;
     const endDateTimeStr   = `${endDateParam} 23:59:59`;
-
+ 
     // 3) Query SQL Server. We pass the plain string as sql.DateTime (or DateTime2).
     const pool = await poolPromiseATDB;
     const result = await pool
@@ -285,15 +285,15 @@ app.get("/api/gettranstid-list",verifyToken, async (req, res) => {
       .input("startDate", sql.VarChar(23), startDateTimeStr)
       .input("endDate",   sql.VarChar(23), endDateTimeStr)
       .query(`
-        SELECT 
+        SELECT
           Tid,
           -- Return dt exactly as stored in the database (no CONVERT to dd-MM-yyyy, etc.)
-          dt 
+          dt
         FROM dbo.NetXs_Trans
-        WHERE dt >= @startDate 
+        WHERE dt >= @startDate
           AND dt <= @endDate
       `);
-
+ 
     // 4) Send back a JSON array of { Tid: <long>, dt: <Date> }.
     //    Express (and mssql) will automatically serialize “dt” as a JS Date.
     //    If you want “dd-MM-yyyy HH:mm:ss” on the client, you can convert later.
@@ -303,7 +303,7 @@ app.get("/api/gettranstid-list",verifyToken, async (req, res) => {
     return res.status(500).json({ message: "Failed to retrieve TID list." });
   }
 });
-
+ 
 //Integration End
  
 // below is for suggestion api (using Stored Procedure)
@@ -421,7 +421,7 @@ app.get('/api/attendance/range', verifyToken, async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
-
+ 
 // // API for Daily Attendance History of Employeee (based on EmpID, Year, Month)
 app.get(
   "/api/attendance/:empId/:year/:month",
@@ -482,7 +482,7 @@ app.get(
   }
 );
  
-
+ 
 app.get(
   "/api/get-employee-absent/:operationId/:date/:deptId/:subdeptId",
   verifyToken,
@@ -513,8 +513,8 @@ app.get(
     }
   }
 );
-
-
+ 
+ 
 app.put("/api/update-expected-count", verifyToken, async (req, res) => {
   const { deptId, subDeptId, newExpectedCount } = req.body;
  
@@ -567,7 +567,7 @@ app.get("/api/monthly-attendance", verifyToken, async (req, res) => {
 //monthly report
 app.get("/api/Monthly-attendance-batch", verifyToken, async (req, res) => {
   const { operationId, deptId, subDeptId, fromDate, toDate } = req.query;
-
+ 
   try {
     const pool = await poolPromiseATDB;
     const result = await pool
@@ -578,7 +578,7 @@ app.get("/api/Monthly-attendance-batch", verifyToken, async (req, res) => {
       .input("param_FromDate", sql.Date, fromDate)
       .input("param_ToDate", sql.Date, toDate)
       .execute("[dbo].[sp_GetDeptAttHistory_range]");
-
+ 
     res.status(200).json(result.recordset);
     console.log("Executed successfully:", result.recordset);
   } catch (error) {
@@ -589,7 +589,7 @@ app.get("/api/Monthly-attendance-batch", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
+ 
 // API for Daily deptwise  Attendance History of Employeee (based on EmpID, Year, Month)
 app.get(
   "/api/get-employee-attendance/:operationId/:date/:deptId/",
@@ -854,7 +854,7 @@ app.post("/api/watchlist/create", verifyToken, async (req, res) => {
     tvp.columns.add("EmployeeName", sql.NVarChar(255));
     tvp.columns.add("EmployeeEmail", sql.NVarChar(255));
     tvp.columns.add("StartDate", sql.Date); // Optional: Add EmployeeStatus if needed
-    tvp.columns.add("EndDate", sql.Date); 
+    tvp.columns.add("EndDate", sql.Date);
  
     param_tvp_WatchListEmployees.forEach((emp, index) => {
      tvp.rows.add(
@@ -983,6 +983,38 @@ app.post("/api/employeereport/:empid/report", async (req, res) => {
 //   res.sendFile(path.join(__dirname, '../ReactUIApp/build', 'index.html'));
 // });
  
+ 
+// 1. Fetch Master Data (Departments & Sub-Departments)
+app.get('/api/getMasterData', verifyToken, async (req, res) => {
+  try {
+    const pool = await poolPromiseATDB;
+    const result = await pool.request().execute('sp_GetMiscData');
+    // result.recordsets: [ departments, subdepartments ]
+    res.json(result.recordsets);
+  } catch (err) {
+    console.error('Error fetching master data:', err.message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+ 
+// 2. Insert New Dept-SubDept Mapping
+app.post('/api/addMapping', verifyToken, async (req, res) => {
+  const { DeptId, DeptName, SubDeptId, SubDeptName } = req.body;
+  try {
+    const pool = await poolPromiseATDB;
+    await pool.request()
+      .input('DeptId', DeptId)
+      .input('DeptName', DeptName)
+      .input('SubDeptId', SubDeptId)
+      .input('SubDeptName', SubDeptName)
+      .execute('sp_AddDeptSubDeptMapping');
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error adding mapping:', err.message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+ 
 /** 1️⃣ Get Dept/Sub‑Dept list */
 app.get("/api/deptsubdept", verifyToken, async (req, res) => {
   try {
@@ -991,6 +1023,21 @@ app.get("/api/deptsubdept", verifyToken, async (req, res) => {
     res.json(result.recordset);
   } catch (err) {
     console.error("Error fetching Dept/Sub-Dept list:", err.message);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+//Delete deptsubdept
+app.post("/api/deleteMapping", verifyToken, async (req, res) => {
+  const { ID } = req.body;
+  try {
+    const pool = await poolPromiseATDB;
+    await pool.request()
+      .input("ID", sql.BigInt, ID)
+      .execute("sp_DeleteDeptSubDeptMapping");
+ 
+    res.status(200).json({ message: "Mapping deactivated successfully" });
+  } catch (err) {
+    console.error("Error deleting mapping:", err.message);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
@@ -1093,6 +1140,7 @@ app.put(
   }
 );
  
+ 
 /** 6️⃣ Delete mapping */
 app.delete(
   "/api/deptmanager/:deptId/:subDeptId/:managerId",
@@ -1119,5 +1167,3 @@ app.delete(
 app.listen(PORT, () => {
   console.log(`Attendance Tracker Server is running on port: ${PORT}`);
 });
- 
- 
